@@ -1,0 +1,8 @@
+# ⛧ the cat compiles ⛧
+# crawl it. it's four files and none of them are hiding anything.
+
+User-agent: *
+Allow: /
+
+# add your sitemap here once the domain is final, e.g.
+# Sitemap: https://cate.xyz/sitemap.xml

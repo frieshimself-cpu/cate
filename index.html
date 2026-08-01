@@ -12,6 +12,10 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23050505'/><text y='24' x='2' font-size='20' fill='%237bf1a8' font-family='monospace'>$C</text></svg>">
 <link rel="stylesheet" href="styles.css">
+<!-- sets html.js before first paint so JS-only affordances never flash.
+     NOTE: the CSP in vercel.json pins this script by sha256 hash. if you
+     edit even one character, recompute it or the site will break in prod:
+       printf "%s" '<script contents>' | openssl dgst -sha256 -binary | base64 -->
 <script>document.documentElement.className = 'js';</script>
 </head>
 <body>

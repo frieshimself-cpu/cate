@@ -1,0 +1,13 @@
+# vercel
+.vercel
+
+# os / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# there is no build step — but keep these out anyway
+node_modules/
+*.log

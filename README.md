@@ -10,6 +10,8 @@ files. Open `index.html` and it works.
 index.html    markup + all copy + the contract address
 styles.css    tokens, layout, CRT overlays, responsive rules
 main.js       boot, typewriter, CA copy, live market feed, console
+vercel.json   headers (CSP + security + caching), clean URLs
+robots.txt    crawl policy
 ```
 
 ## ⚠ Before you launch — the one thing you must change
@@ -38,11 +40,53 @@ sits idle until you replace it.
 python3 -m http.server 8000   # or: npx serve .
 ```
 
-## Deploying
+## Deploying to Vercel
 
-Static, so anything serves it. GitHub Pages: **Settings → Pages → Deploy from a
-branch**, pick the branch and `/` root. Netlify / Vercel / Cloudflare Pages work
-with zero config.
+There's no build step, so Vercel serves the repo root as-is.
+
+**From the dashboard:** New Project → import this repo → Framework Preset
+**Other** → leave Build Command and Output Directory empty → Deploy. Make sure
+the Production Branch matches the branch you're pushing to
+(Settings → Git → Production Branch).
+
+**From the CLI:**
+
+```sh
+npm i -g vercel
+vercel          # preview deploy
+vercel --prod   # production
+```
+
+`vercel.json` ships with:
+
+- **`cleanUrls`** — `/index.html` serves at `/`
+- **Security headers** — `X-Content-Type-Options`, `Referrer-Policy`,
+  `X-Frame-Options: DENY`, `Permissions-Policy`, HSTS
+- **A strict CSP** — `default-src 'self'`, no `unsafe-inline` scripts,
+  `object-src 'none'`, `frame-ancestors 'none'`. `connect-src` allows exactly
+  one external origin: `https://api.dexscreener.com`.
+- **Cache-Control** — HTML/CSS/JS revalidate (so a contract-address fix goes
+  live immediately); images and fonts are immutable for a year.
+
+Worth having on a coin site specifically: the CSP means an injected script
+can't run and quietly swap the contract address on your visitors.
+
+> ⚠ **The CSP pins the one inline script in `index.html` by SHA-256 hash.** If
+> you edit that script, recompute the hash and update `script-src` in
+> `vercel.json`, or the page breaks in production (it will still work locally,
+> which is exactly how this bites people):
+>
+> ```sh
+> printf "%s" "document.documentElement.className = 'js';" \
+>   | openssl dgst -sha256 -binary | base64
+> ```
+>
+> If you add a third-party script (analytics, a wallet SDK, a chart widget),
+> add its origin to `script-src` — and any API it calls to `connect-src`.
+
+**Other hosts:** it's plain static output, so Netlify, Cloudflare Pages, GitHub
+Pages and `rsync` all work too — they'll just ignore `vercel.json`, so you'd
+need to port the headers yourself.
 
 ## Live market data
 
@@ -116,4 +160,6 @@ boot sequence, glitch, flicker, typewriter and scroll reveals. An inline
 JavaScript disabled. Clipboard falls back to `execCommand` on non-secure origins.
 
 Verified in headless Chromium: no console errors, zero horizontal overflow at
-390px, live feed exercised against a real DexScreener payload.
+390px, live feed exercised against a real DexScreener payload, and the whole
+page re-tested while served behind the exact production headers from
+`vercel.json` — zero CSP violations.
