@@ -13,6 +13,12 @@
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+  const el = (tag, cls, html) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (html != null) n.innerHTML = html;
+    return n;
+  };
 
   /* ── contract ──────────────────────────────────────── */
   const CA = ($('#ca-value')?.textContent || '').trim();
@@ -24,8 +30,23 @@
   const DEX_PAGE  = 'https://dexscreener.com/solana/';
   const PUMP_PAGE = 'https://pump.fun/coin/';
 
-  /* ══ ascii rain ═══════════════════════════════════════
-     cheap, capped at ~18fps, pauses when the tab is hidden. */
+  /* ══ toasts ═══════════════════════════════════════════ */
+  function toast(msg, kind = 'ok') {
+    const box = $('#toasts');
+    if (!box) return;
+    const t = el('div', 'toast');
+    t.dataset.kind = kind;
+    t.textContent = msg;
+    box.appendChild(t);
+    setTimeout(() => {
+      t.style.transition = 'opacity .3s, transform .3s';
+      t.style.opacity = '0';
+      t.style.transform = 'translateX(14px)';
+      setTimeout(() => t.remove(), 320);
+    }, 2600);
+  }
+
+  /* ══ ascii rain ═══════════════════════════════════════ */
   function initRain() {
     const cv = $('#rain');
     if (!cv || reduced) return;
@@ -34,10 +55,10 @@
 
     const GLYPHS = '01⛧‡☠▓▒░█CATE$◆╬×+·';
     const FONT = 14;
-    let cols = 0, drops = [], dpr = 1, w = 0, h = 0;
+    let cols = 0, drops = [], w = 0, h = 0;
 
     const resize = () => {
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       w = cv.clientWidth; h = cv.clientHeight;
       cv.width = Math.floor(w * dpr);
       cv.height = Math.floor(h * dpr);
@@ -59,17 +80,14 @@
       raf = requestAnimationFrame(frame);
       if (t - last < 55) return;   // ~18fps is plenty for rain
       last = t;
-
       ctx.fillStyle = 'rgba(7,5,4,0.16)';
       ctx.fillRect(0, 0, w, h);
-
       const col = accent();
       for (let i = 0; i < cols; i++) {
         const d = drops[i];
-        const ch = GLYPHS[(Math.random() * GLYPHS.length) | 0];
         ctx.fillStyle = d.lit ? col : 'rgba(255,138,31,0.16)';
         ctx.globalAlpha = d.lit ? 0.5 : 0.28;
-        ctx.fillText(ch, i * FONT, d.y);
+        ctx.fillText(GLYPHS[(Math.random() * GLYPHS.length) | 0], i * FONT, d.y);
         d.y += FONT * d.speed;
         if (d.y > h + FONT) {
           d.y = -FONT * (Math.random() * 12);
@@ -85,32 +103,96 @@
 
     resize();
     addEventListener('resize', resize, { passive: true });
-    document.addEventListener('visibilitychange', () => document.hidden ? stop() : start());
+    document.addEventListener('visibilitychange', () => (document.hidden ? stop() : start()));
     start();
+  }
+
+  /* ══ the cat — blinks, and her pupils track the cursor ═ */
+  const CAT = [
+    '        ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄',
+    '      ▄█░░░░░░░░░░░░░░░█▄',
+    '     █░░▄▄▄▄░░░░░░▄▄▄▄░░█',
+    '     █░░█%%█░░░░░░█%%█░░█',
+    '     █░░▀▀▀▀░░░░░░▀▀▀▀░░█',
+    '     █░░░░░░░░▄█▄░░░░░░░█',
+    '     ▀█░░░░░░▀███▀░░░░░█▀',
+    '       ▀█▄░▄█▄▄▄▄▄█▄░▄█▀',
+    '         ▀█ █ █ █ █ █▀',
+    '            ▀ ▀ ▀ ▀',
+  ].join('\n');
+
+  function initCat() {
+    const node = $('#cat');
+    if (!node) return;
+
+    const paint = (pupils) => { node.textContent = CAT.replace(/%%/g, pupils); };
+    paint('▓█');
+    if (reduced) return;
+
+    let gaze = '▓█', blinking = false;
+
+    const render = () => { if (!blinking) paint(gaze); };
+
+    let queued = false;
+    addEventListener('mousemove', (e) => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => {
+        queued = false;
+        const r = node.getBoundingClientRect();
+        if (!r.width) return;
+        const dx = (e.clientX - (r.left + r.width / 2)) / (r.width / 2);
+        gaze = dx < -0.18 ? '█▓' : dx > 0.18 ? '▓█' : '██';
+        render();
+      });
+    }, { passive: true });
+
+    // idle blink
+    const blink = async () => {
+      for (;;) {
+        await sleep(2600 + Math.random() * 4200);
+        if (document.hidden) continue;
+        blinking = true;
+        paint('▀▀');
+        await sleep(120);
+        blinking = false;
+        render();
+        if (Math.random() < 0.3) {          // occasional double-blink
+          await sleep(150);
+          blinking = true; paint('▀▀');
+          await sleep(110);
+          blinking = false; render();
+        }
+      }
+    };
+    blink();
   }
 
   /* ══ boot ═════════════════════════════════════════════ */
   const BOOT_LINES = [
-    'den bios v4.3.1 — 0x43415445',
-    'checking memory ........... 65536k ok',
-    'mounting /dev/bone ........ ok',
-    'loading cate.elf .......... ok',
-    'spl-token authority ....... revoked',
-    'liquidity pool ............ burned',
-    'lives remaining ........... 5/9',
-    'entropy pool .............. warm',
-    'no telemetry module found. good.',
-    '',
-    '  ⛧ the cat compiles ⛧',
-    '',
+    ['den bios v4.3.1 — 0x43415445',        'post'],
+    ['checking memory ........... 65536k ok', 'memory'],
+    ['mounting /dev/bone ........ ok',        'mount'],
+    ['loading cate.elf .......... ok',        'kernel'],
+    ['spl-token authority ....... revoked',   'chain'],
+    ['liquidity pool ............ burned',    'chain'],
+    ['lives remaining ........... 5/9',       'lore'],
+    ['sigil forge ............... seeded',    'render'],
+    ['entropy pool .............. warm',      'entropy'],
+    ['no telemetry module found. good.',      'privacy'],
+    ['', ''],
+    ['  ⛧ the cat compiles ⛧', 'ready'],
+    ['', ''],
   ];
 
   async function boot() {
-    const el   = $('#boot');
+    const box  = $('#boot');
     const log  = $('#boot-log');
     const fill = $('#boot-fill');
+    const pct  = $('#boot-pct');
+    const task = $('#boot-task');
     const skip = $('#boot-skip');
-    if (!el) return;
+    if (!box) return;
 
     const seen = sessionStorage.getItem('den:booted') === '1';
     let done = false;
@@ -121,10 +203,10 @@
       if (done) return;
       done = true;
       sessionStorage.setItem('den:booted', '1');
-      el.style.opacity = '0';
-      el.style.visibility = 'hidden';
-      el.style.pointerEvents = 'none';
-      setTimeout(() => el.remove(), 500);
+      box.style.opacity = '0';
+      box.style.visibility = 'hidden';
+      box.style.pointerEvents = 'none';
+      setTimeout(() => box.remove(), 500);
       document.removeEventListener('keydown', finish);
       startTyper();
     };
@@ -133,15 +215,19 @@
 
     document.addEventListener('keydown', finish);
     skip?.addEventListener('click', finish);
-    el.addEventListener('click', finish);
+    box.addEventListener('click', finish);
 
     for (let i = 0; i < BOOT_LINES.length; i++) {
       if (done) return;
-      log.textContent += BOOT_LINES[i] + '\n';
-      if (fill) fill.style.width = Math.round(((i + 1) / BOOT_LINES.length) * 100) + '%';
-      await sleep(BOOT_LINES[i] === '' ? 80 : 135);
+      const [line, label] = BOOT_LINES[i];
+      log.textContent += line + '\n';
+      const p = Math.round(((i + 1) / BOOT_LINES.length) * 100);
+      if (fill) fill.style.width = p + '%';
+      if (pct)  pct.textContent = p + '%';
+      if (task && label) task.textContent = label;
+      await sleep(line === '' ? 70 : 125);
     }
-    await sleep(320);
+    await sleep(300);
     finish();
   }
 
@@ -180,7 +266,7 @@
     }
   }
 
-  /* ══ copy helper ══════════════════════════════════════ */
+  /* ══ clipboard ════════════════════════════════════════ */
   async function copyText(text) {
     try {
       await navigator.clipboard.writeText(text);
@@ -215,6 +301,7 @@
         box?.classList.remove('is-flash');
       }, 1800);
     }
+    toast(ok ? 'contract copied' : 'copy blocked — select it manually', ok ? 'ok' : 'err');
     return ok;
   }
 
@@ -239,7 +326,7 @@
     }));
   }
 
-  /* ══ live market data ═════════════════════════════════ */
+  /* ══ formatting ═══════════════════════════════════════ */
   const fmtUsd = (n) => {
     if (!isFinite(n) || n <= 0) return '—';
     if (n >= 1)    return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 2 });
@@ -248,7 +335,6 @@
     const s = n.toFixed(15).replace(/0+$/, '');
     return '$' + (s.endsWith('.') ? s + '0' : s);
   };
-
   const fmtBig = (n) => {
     if (!isFinite(n) || n <= 0) return '—';
     for (const [size, suffix] of [[1e9, 'B'], [1e6, 'M'], [1e3, 'K']]) {
@@ -256,33 +342,115 @@
     }
     return '$' + n.toFixed(0);
   };
+  // the reconstructed series carries float noise (…2747351589); the legend
+  // only ever needs a few significant digits.
+  const fmtUsdShort = (n) => {
+    if (!isFinite(n) || n <= 0) return '—';
+    if (n >= 0.01) return fmtUsd(n);
+    const s = Number(n.toPrecision(4)).toFixed(20).replace(/0+$/, '');
+    return '$' + (s.endsWith('.') ? s + '0' : s);
+  };
+  const fmtPct = (n) =>
+    isFinite(n) ? (n >= 0 ? '+' : '') + n.toFixed(2) + '%' : '—';
 
-  let lastStats = null;
+  function paintChange(node, change) {
+    if (!node) return;
+    node.textContent = fmtPct(change);
+    node.classList.toggle('up', isFinite(change) && change >= 0);
+    node.classList.toggle('down', isFinite(change) && change < 0);
+  }
 
-  function paintChange(el, change) {
-    if (!el) return;
-    if (isFinite(change)) {
-      el.textContent = (change >= 0 ? '+' : '') + change.toFixed(2) + '%';
-      el.classList.toggle('up', change >= 0);
-      el.classList.toggle('down', change < 0);
-    } else {
-      el.textContent = '—';
+  /* ══ price chart ══════════════════════════════════════
+     dexscreener gives change over 24h/6h/1h/5m, not tick data — so we
+     walk backwards from the current price to reconstruct five points.
+     labelled as such on the page; it is a shape, not a candle chart. */
+  function drawSpark(canvas, series, opts = {}) {
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const W = canvas.clientWidth || canvas.width;
+    const H = canvas.clientHeight || canvas.height;
+    canvas.width = Math.floor(W * dpr);
+    canvas.height = Math.floor(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    if (!series || series.length < 2) return;
+
+    const css = getComputedStyle(document.documentElement);
+    const accent = css.getPropertyValue('--accent').trim() || '#ff8a1f';
+    const dead   = css.getPropertyValue('--dead').trim() || '#ff4d5e';
+    const rising = series[series.length - 1] >= series[0];
+    const col = rising ? accent : dead;
+
+    const pad = opts.pad ?? 14;
+    const lo = Math.min(...series), hi = Math.max(...series);
+    const span = (hi - lo) || Math.abs(hi) || 1;
+    const x = (i) => pad + (i / (series.length - 1)) * (W - pad * 2);
+    const y = (v) => H - pad - ((v - lo) / span) * (H - pad * 2);
+
+    if (opts.grid) {
+      ctx.strokeStyle = 'rgba(255,255,255,.05)';
+      ctx.lineWidth = 1;
+      for (let g = 0; g <= 4; g++) {
+        const gy = pad + (g / 4) * (H - pad * 2);
+        ctx.beginPath(); ctx.moveTo(pad, gy); ctx.lineTo(W - pad, gy); ctx.stroke();
+      }
+    }
+
+    // area fill
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, col + '55');
+    grad.addColorStop(1, col + '00');
+    ctx.beginPath();
+    ctx.moveTo(x(0), y(series[0]));
+    series.forEach((v, i) => ctx.lineTo(x(i), y(v)));
+    ctx.lineTo(x(series.length - 1), H - pad);
+    ctx.lineTo(x(0), H - pad);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // line
+    ctx.beginPath();
+    series.forEach((v, i) => (i ? ctx.lineTo(x(i), y(v)) : ctx.moveTo(x(i), y(v))));
+    ctx.strokeStyle = col;
+    ctx.lineWidth = opts.thin ? 1.25 : 2;
+    ctx.lineJoin = 'round';
+    ctx.shadowColor = col;
+    ctx.shadowBlur = opts.thin ? 4 : 10;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    if (!opts.thin) {
+      series.forEach((v, i) => {
+        ctx.beginPath();
+        ctx.arc(x(i), y(v), i === series.length - 1 ? 4 : 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = i === series.length - 1 ? col : 'rgba(255,255,255,.35)';
+        ctx.fill();
+      });
     }
   }
 
+  /* ══ live market data ═════════════════════════════════ */
+  let lastStats = null;
+  let lastPools = [];
+
+  function setIdle(note) {
+    const box = $('#metrics'), strip = $('#strip');
+    if (box) box.dataset.state = 'idle';
+    if (strip) strip.dataset.state = 'idle';
+    const st = $('#s-status'); if (st) st.textContent = CA_IS_REAL ? 'offline' : 'pre-launch';
+    const badge = $('#chart-badge'); if (badge) { badge.dataset.on = 'false'; badge.textContent = 'idle'; }
+    const n = $('#metrics-note'); if (n) n.textContent = note;
+  }
+
   async function pullStats() {
-    const box   = $('#metrics');
-    const strip = $('#strip');
-    const note  = $('#metrics-note');
-    if (!box) return;
+    if (!$('#metrics')) return;
 
     if (!CA_IS_REAL) {
-      box.dataset.state = 'idle';
-      if (strip) strip.dataset.state = 'idle';
-      const st = $('#s-status');
-      if (st) st.textContent = 'pre-launch';
-      if (note) note.textContent =
-        'live feed idle — drop a real contract address into #ca-value and this wakes up.';
+      setIdle('live feed idle — drop a real contract address into #ca-value and this wakes up.');
       return;
     }
 
@@ -291,112 +459,238 @@
       if (!res.ok) throw new Error('http ' + res.status);
       const json = await res.json();
 
-      // pick the deepest pool — that's the one people actually trade
-      const pair = (json.pairs || [])
+      // deepest pool first — that's the one people actually trade
+      const pools = (json.pairs || [])
         .slice()
-        .sort((a, b) => (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0))[0];
+        .sort((a, b) => (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0));
+      const pair = pools[0];
       if (!pair) throw new Error('no pairs yet');
+      lastPools = pools;
 
       const price  = parseFloat(pair.priceUsd);
       const change = parseFloat(pair.priceChange?.h24);
       const mcap   = pair.marketCap || pair.fdv;
       const liq    = pair.liquidity?.usd;
-      const txns   = (pair.txns?.h24?.buys || 0) + (pair.txns?.h24?.sells || 0);
+      const vol    = pair.volume?.h24;
+      const buys   = pair.txns?.h24?.buys || 0;
+      const sells  = pair.txns?.h24?.sells || 0;
 
       $('#m-price').textContent = fmtUsd(price);
       $('#m-mcap').textContent  = fmtBig(mcap);
       $('#m-liq').textContent   = fmtBig(liq);
-      $('#m-vol').textContent   = fmtBig(pair.volume?.h24);
-      $('#m-txns').textContent  = txns ? txns.toLocaleString('en-US') + ' txns' : '—';
+      $('#m-vol').textContent   = fmtBig(vol);
+      $('#m-txns').textContent  = (buys + sells) ? (buys + sells).toLocaleString('en-US') : '—';
       paintChange($('#m-change'), change);
 
       $('#s-price').textContent = fmtUsd(price);
       $('#s-mcap').textContent  = fmtBig(mcap);
       $('#s-liq').textContent   = fmtBig(liq);
+      $('#s-vol').textContent   = fmtBig(vol);
       $('#s-status').textContent = 'live';
       paintChange($('#s-change'), change);
 
-      box.dataset.state = 'live';
-      if (strip) strip.dataset.state = 'live';
-      if (note) note.textContent = `live · ${pair.dexId} · updated ${new Date().toLocaleTimeString()}`;
-      lastStats = { price, change, mcap, liq, txns, dex: pair.dexId };
+      $('#metrics').dataset.state = 'live';
+      const strip = $('#strip'); if (strip) strip.dataset.state = 'live';
+      $('#metrics-note').textContent =
+        `live · ${pair.dexId} · ${pools.length} pool${pools.length === 1 ? '' : 's'} · updated ${new Date().toLocaleTimeString()}`;
+
+      // ── timeframes ──
+      const ch = pair.priceChange || {};
+      $$('#tfs b').forEach((b) => paintChange(b, parseFloat(ch[b.dataset.tf])));
+
+      // ── reconstructed series: 24h → 6h → 1h → 5m → now ──
+      const back = (pctChange) => {
+        const c = parseFloat(pctChange);
+        return isFinite(c) ? price / (1 + c / 100) : price;
+      };
+      const series = [back(ch.h24), back(ch.h6), back(ch.h1), back(ch.m5), price];
+      drawSpark($('#spark'), series, { grid: true });
+      drawSpark($('#spark-mini'), series, { thin: true, pad: 3 });
+      $('#spark-lo').textContent = fmtUsdShort(Math.min(...series));
+      $('#spark-hi').textContent = fmtUsdShort(Math.max(...series));
+      const badge = $('#chart-badge');
+      if (badge) { badge.dataset.on = 'true'; badge.textContent = 'live'; }
+
+      // ── buy/sell pressure ──
+      const total = buys + sells;
+      const bp = total ? (buys / total) * 100 : 50;
+      $('#pressure-buy').style.width = bp + '%';
+      $('#pressure-sell').style.width = (100 - bp) + '%';
+      $('#p-buys').textContent = buys.toLocaleString('en-US');
+      $('#p-sells').textContent = sells.toLocaleString('en-US');
+
+      // ── pools table ──
+      renderPools(pools);
+
+      lastStats = { price, change, mcap, liq, vol, buys, sells, dex: pair.dexId, pools: pools.length };
     } catch (err) {
-      box.dataset.state = 'idle';
-      if (strip) strip.dataset.state = 'idle';
-      const st = $('#s-status');
-      if (st) st.textContent = 'offline';
-      if (note) note.textContent = `live feed unavailable (${err.message}) — the chart link still works.`;
+      setIdle(`live feed unavailable (${err.message}) — the chart link still works.`);
     }
+  }
+
+  function renderPools(pools) {
+    const body = $('#pools');
+    if (!body) return;
+    body.textContent = '';
+    $('#pools-count').textContent = `· ${pools.length}`;
+    pools.slice(0, 12).forEach((p) => {
+      const tr = el('tr');
+      const chg = parseFloat(p.priceChange?.h24);
+      tr.innerHTML =
+        `<td class="hl">${p.dexId || '—'}</td>` +
+        `<td>${(p.baseToken?.symbol || '?')}/${(p.quoteToken?.symbol || '?')}</td>` +
+        `<td>${fmtUsd(parseFloat(p.priceUsd))}</td>` +
+        `<td>${fmtBig(p.liquidity?.usd)}</td>` +
+        `<td>${fmtBig(p.volume?.h24)}</td>` +
+        `<td class="${isFinite(chg) && chg < 0 ? 'down' : 'up'}">${fmtPct(chg)}</td>`;
+      body.appendChild(tr);
+    });
   }
 
   function initStats() {
     pullStats();
     if (CA_IS_REAL) setInterval(pullStats, 60000);
+    addEventListener('resize', () => {
+      if (lastStats) drawSpark($('#spark'), null);
+    }, { passive: true });
   }
 
-  /* ══ nine lives ═══════════════════════════════════════ */
-  const LIVES = {
-    1: ['the compile', 'spent',
+  /* ══ content: lives / threads / ledger / commits / faq ═ */
+  const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'];
+
+  const LIVES = [
+    ['the compile', 'spent',
       'she was assembled out of dead repos and abandoned branches.\n' +
       'no announcement. no countdown. a terminal nobody was watching\n' +
       'printed one line and then went quiet for six hours.'],
-    2: ['the mint', 'spent',
+    ['the mint', 'spent',
       'one billion, six decimals, authorities burned in the same\n' +
       'transaction that created them. there was never a key to lose.'],
-    3: ['the burn', 'spent',
+    ['the burn', 'spent',
       'the pool went in and the receipt went nowhere. the tx is public.\n' +
       'what it bought is thread #002, and that argument is still open.'],
-    4: ['the den', 'spent',
+    ['the den', 'spent',
       'this site. no framework, no build step, no trackers, no analytics.\n' +
       'every byte hand-placed. view source — the docs are the site.'],
-    5: ['the terminal', 'burning',
+    ['the terminal', 'burning',
       'the console you are one keystroke away from. it reads the chain,\n' +
       'forges sigils, and answers to nobody. still being written.\n' +
       'press / and type `help`.'],
-    6: ['the litterbox', 'sealed',
+    ['the litterbox', 'sealed',
       '████ ████████ ██ ███████ ███ ████████ ████ ██ ████████.\n' +
       'the seal breaks when the colony says it does.'],
-    7: ['the colony', 'sealed',
+    ['the colony', 'sealed',
       '███████ ██ ████ ███████ █████ ██ █████████ ███ ████.'],
-    8: ['the fork', 'sealed',
+    ['the fork', 'sealed',
       '██ ████ ███████ ███ ████ ████████ — ███ ██ ██████ ████.'],
-    9: ['[ redacted ]', 'sealed',
+    ['[ redacted ]', 'sealed',
       '█ ███ ██████ ███ █████ ████ ████ ██ ███████ ████ ███ ██.\n' +
       'nine is not a number. nine is a limit.'],
-  };
+  ];
 
   function initLives() {
+    const grid = $('#lives-grid');
+    if (!grid) return;
     const out  = $('#life-out');
     const text = $('#life-out-text');
     const bar  = $('#life-out-bar');
     let openId = null;
 
-    $$('.life').forEach((btn) => btn.addEventListener('click', () => {
-      const id = btn.dataset.life;
-      const [name, state, body] = LIVES[id] || [];
-      if (!body) return;
+    LIVES.forEach(([name, state], idx) => {
+      const id = idx + 1;
+      const btn = el('button', `life is-${state}`);
+      btn.type = 'button';
+      btn.dataset.life = String(id);
+      btn.setAttribute('aria-expanded', 'false');
+      btn.innerHTML =
+        `<span class="life__n">${ROMAN[id]}</span>` +
+        `<span class="life__name">${name}</span>` +
+        `<span class="life__state">${state}</span>`;
 
-      if (openId === id) {   // toggle closed
-        out.hidden = true;
-        btn.setAttribute('aria-expanded', 'false');
-        openId = null;
-        return;
-      }
-
-      $$('.life').forEach((b) => b.setAttribute('aria-expanded', 'false'));
-      btn.setAttribute('aria-expanded', 'true');
-      openId = id;
-
-      const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'];
-      bar.textContent = `~/cate/lives/${id}-${name.replace(/[^a-z]+/gi, '-')}`;
-      text.textContent = `life ${ROMAN[id] || id} — ${name}  [${state}]\n\n${body}`;
-      out.hidden = false;
-    }));
+      btn.addEventListener('click', () => {
+        if (openId === id) {
+          out.hidden = true;
+          btn.setAttribute('aria-expanded', 'false');
+          openId = null;
+          return;
+        }
+        $$('.life').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+        btn.setAttribute('aria-expanded', 'true');
+        openId = id;
+        bar.textContent = `~/cate/lives/${id}-${name.replace(/[^a-z]+/gi, '-')}`;
+        text.textContent = `life ${ROMAN[id]} — ${name}  [${state}]\n\n${LIVES[idx][2]}`;
+        out.hidden = false;
+      });
+      grid.appendChild(btn);
+    });
   }
 
-  /* ══ lore war filters ═════════════════════════════════ */
+  const THREADS = [
+    ['001', 'bleeding', 142, 'was the first compile an accident?',
+      'four wallets claim they ran it. three of them didn\'t exist yet.',
+      ['the timestamps are the problem. two of the claimants registered their ' +
+       'wallets after the first block that mentions cate.',
+       'the counter-argument is that a wallet is not a person and the compile ' +
+       'was never signed by one.']],
+    ['002', 'open', 87, 'what did life III actually burn?',
+      'the burn tx is public. what it bought is not.',
+      ['everyone agrees on the amount. nobody agrees on the receipt.',
+       'the thread stays open because the only person who could close it ' +
+       'burned the key that would prove it.']],
+    ['003', 'disputed', 311, 'the cat is not one cat',
+      'argument that "cate" is a process, not an entity. gains traction every time she pushes at 4am.',
+      ['the process camp points at the commit cadence: too even to be a person, ' +
+       'too irregular to be a cron job.',
+       'the entity camp points at the typos.']],
+    ['004', 'locked', 29, 'the rent must be paid',
+      'settled. it was paid. do not open this again.',
+      ['locked by colony consensus after the fourth re-litigation. ' +
+       'the ledger entry stands.']],
+    ['005', 'open', 64, 'nine is not a number, it\'s a limit',
+      'on whether life IX can be spent at all, or only observed.',
+      ['if the ninth is spent, there is no tenth to notice. ' +
+       'which means observation and expenditure may be the same event.']],
+    ['006', 'redacted', '???', '████████ ███ ██████',
+      '█████ ██ ████████ ███ █ ████████ ██████ ███ █████████.',
+      ['████ ███ ██████ ██ ███ ████████ ███ █████ ██ ██████ ████████ ███.']],
+    ['007', 'bleeding', 203, 'who holds the keys that were destroyed?',
+      'nobody. that\'s the point. the thread refuses to die anyway.',
+      ['"destroyed" and "unrecoverable" are not the same claim, ' +
+       'and the thread has spent 203 replies on that gap.']],
+  ];
+
   function initLore() {
+    const list = $('#threads');
+    if (!list) return;
     const empty = $('#threads-empty');
+
+    THREADS.forEach(([id, status, replies, title, blurb, detail]) => {
+      const li = el('li', 'thread');
+      li.dataset.status = status;
+
+      const head = el('button', 'thread__head');
+      head.type = 'button';
+      head.setAttribute('aria-expanded', 'false');
+      head.innerHTML =
+        `<span class="thread__id">#${id}</span>` +
+        `<span class="thread__body"><h3>${title}</h3><p>${blurb}</p></span>` +
+        `<span class="thread__replies">${replies}</span>` +
+        `<span class="thread__status">${status}</span>`;
+
+      const body = el('div', 'thread__detail');
+      body.hidden = true;
+      body.innerHTML = detail.map((p) => `<p>${p}</p>`).join('');
+
+      head.addEventListener('click', () => {
+        const open = head.getAttribute('aria-expanded') === 'true';
+        head.setAttribute('aria-expanded', String(!open));
+        body.hidden = open;
+      });
+
+      li.append(head, body);
+      list.appendChild(li);
+    });
+
     $$('.chip').forEach((chip) => chip.addEventListener('click', () => {
       const want = chip.dataset.filter;
       $$('.chip').forEach((c) => c.classList.toggle('is-on', c === chip));
@@ -410,8 +704,96 @@
     }));
   }
 
-  /* ══ sigil forge ══════════════════════════════════════
-     deterministic: the seed IS the artwork. same seed, same sigil. */
+  const LEDGER = [
+    ['0001', 'COMPILE', 'cate.elf assembled from 41 dead branches', 'final'],
+    ['0002', 'MINT',    '1,000,000,000 CATE · 6 decimals', 'final'],
+    ['0003', 'REVOKE',  'mint authority → null', 'final'],
+    ['0004', 'REVOKE',  'freeze authority → null', 'final'],
+    ['0005', 'BURN',    'liquidity pool tokens → incinerator', 'final'],
+    ['0006', 'DEPLOY',  'the den · 4 files · 0 dependencies', 'final'],
+    ['0007', 'COMMIT',  'nine lives written to the page', 'final'],
+    ['0008', 'OPEN',    'lore wars · 7 threads seeded', 'live'],
+    ['0009', 'BUILD',   'the terminal · reads chain, forges sigils', 'live'],
+    ['0010', '██████',  '████ ████████ ██ ███ ████████ ██████', 'sealed'],
+  ];
+
+  function initLedger() {
+    const body = $('#ledger-body');
+    if (!body) return;
+    LEDGER.forEach(([n, ev, detail, state]) => {
+      const tr = el('tr');
+      tr.dataset.state = state;
+      tr.innerHTML =
+        `<td>${n}</td>` +
+        `<td class="ltable__ev">${ev}</td>` +
+        `<td>${detail}</td>` +
+        `<td class="ltable__state">${state}</td>`;
+      body.appendChild(tr);
+    });
+  }
+
+  const COMMITS = [
+    ['a1c0ffe', 'done', 'init: assemble the cat',
+      'token minted, authorities revoked, lp burned. no announcement, no countdown, no calls. it was just suddenly there.', 'merged'],
+    ['7ec4b1e', 'done', 'feat: the den',
+      'this site. no framework, no build step, no trackers. every byte hand-placed.', 'merged'],
+    ['b0nef1re', 'done', 'feat: nine lives',
+      'the lore, on the page. four spent and named. one burning in public.', 'merged'],
+    ['519113d', 'done', 'feat: the litterbox',
+      'a seeded sigil forge. deterministic — the seed is the artwork.', 'merged'],
+    ['HEAD', 'live', 'feat: terminal + market',
+      'a console that reads the chain, and a live market panel built straight off the public API. no backend involved.', 'building'],
+    ['next', '', 'feat: the wall',
+      'colony-curated sigils, minted by consensus. the good ones get merged.', 'queued'],
+    ['next', '', 'feat: lore wars v2',
+      'threads that write to chain. arguments with a cost.', 'queued'],
+    ['??????', 'ghost', '[ redacted ]',
+      '████ ██████ ██ ███ ████████ ███ █████████ ██████ ███ ████.', 'sealed'],
+  ];
+
+  function initCommits() {
+    const list = $('#commits-list');
+    if (!list) return;
+    COMMITS.forEach(([hash, kind, title, body, state]) => {
+      const li = el('li', 'commit' + (kind ? ` is-${kind}` : ''));
+      li.innerHTML =
+        `<span class="commit__hash">${hash}</span>` +
+        `<div class="commit__body"><h3>${title}</h3><p>${body}</p></div>` +
+        `<span class="commit__state">${state}</span>`;
+      list.appendChild(li);
+    });
+  }
+
+  const FAQ = [
+    ['is there a team?',
+      'no. there is a colony. no team wallet, no team allocation, nobody to ask for a refund.'],
+    ['wen?',
+      'now. it already launched. scroll up. the contract is on this page.'],
+    ['why does the site look like a terminal?',
+      'because it is one. press <kbd>/</kbd>. it reads live market data and forges sigils without leaving the page.'],
+    ['how do i know it isn\'t a rug?',
+      'you don\'t take our word for it — you check. lp burned, mint and freeze revoked, zero team supply. paste the contract into rugcheck and read it yourself. that is the entire security model.'],
+    ['where does the market data come from?',
+      'the public dexscreener API, straight from your browser. no backend, no key, no analytics in the middle. the price chart is reconstructed from the 24h/6h/1h/5m change figures, which is why it is five points and not a candle chart — that is stated on the panel.'],
+    ['what are the nine lives?',
+      'the roadmap, in the only form cate accepts: things already done, one thing burning in public, and sealed ones nobody gets to preview.'],
+    ['can i contribute?',
+      'bring code, art, ascii, lore, or nothing at all. sign a manifest in the colony. the cat does not check credentials.'],
+    ['is the colony form sending my data somewhere?',
+      'no. the manifest is generated in your browser and the counter lives in localStorage. nothing is transmitted. you can read main.js and confirm it.'],
+  ];
+
+  function initFaq() {
+    const box = $('#faq-list');
+    if (!box) return;
+    FAQ.forEach(([q, a]) => {
+      const d = el('details');
+      d.innerHTML = `<summary>${q}</summary><p>${a}</p>`;
+      box.appendChild(d);
+    });
+  }
+
+  /* ══ sigil forge ══════════════════════════════════════ */
   const mulberry32 = (a) => () => {
     a |= 0; a = (a + 0x6D2B79F5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
@@ -421,14 +803,12 @@
 
   // sigils are built from strokes — spine, arms, diagonals — not pure noise.
   // noise alone reads as scattered dust; strokes read as something carved.
-  function forgeSigil(seed, W = 21, H = 11) {
+  function forgeSigil(seed, W = 21, H = 11, dens = 0.5) {
     const rnd = mulberry32(seed);
     const grid = Array.from({ length: H }, () => Array(W).fill(' '));
     const mid = (W - 1) >> 1;
 
-    const put = (x, y, ch) => {
-      if (y >= 0 && y < H && x >= 0 && x < W) grid[y][x] = ch;
-    };
+    const put = (x, y, ch) => { if (y >= 0 && y < H && x >= 0 && x < W) grid[y][x] = ch; };
     const sym = (x, y, ch) => { put(x, y, ch); put(W - 1 - x, y, ch); };
 
     const HEAVY = ['█', '▓', '╬', '◆', '▄'];
@@ -436,20 +816,17 @@
     const heavy = HEAVY[(rnd() * HEAVY.length) | 0];
     const light = LIGHT[(rnd() * LIGHT.length) | 0];
 
-    // spine
     const top = 1 + ((rnd() * 2) | 0);
     const bot = H - 2 - ((rnd() * 2) | 0);
     for (let y = top; y <= bot; y++) put(mid, y, heavy);
 
-    // 2-4 symmetric arms
-    const arms = 2 + ((rnd() * 3) | 0);
+    const arms = 1 + Math.round(dens * 4) + ((rnd() * 2) | 0);
     for (let i = 0; i < arms; i++) {
       const y = top + ((rnd() * (bot - top + 1)) | 0);
       const len = 2 + ((rnd() * mid) | 0);
       for (let x = mid - len; x <= mid; x++) sym(x, y, heavy);
     }
 
-    // diagonal crowns
     if (rnd() < 0.75) {
       const len = 2 + ((rnd() * (mid - 1)) | 0);
       for (let i = 0; i < len; i++) sym(mid - i, top + i, light);
@@ -459,8 +836,7 @@
       for (let i = 0; i < len; i++) sym(mid - i, bot - i, light);
     }
 
-    // speckle only where nothing was carved
-    const spec = 0.05 + rnd() * 0.13;
+    const spec = 0.03 + dens * 0.22;
     for (let y = 0; y < H; y++) {
       for (let x = 0; x <= mid; x++) {
         if (grid[y][x] === ' ' && rnd() < spec) sym(x, y, light);
@@ -474,39 +850,95 @@
   const GALLERY_SEEDS = [43415445, 1337, 8008135, 90210, 314159, 271828,
                          666, 42, 20260101, 999999, 123456, 7777];
 
-  let currentSeed = null;
+  let currentSeed = 43415445;
+  const forgeOpts = () => {
+    const w = parseInt($('#forge-size')?.value, 10) || 21;
+    const d = (parseInt($('#forge-dens')?.value, 10) || 50) / 100;
+    return { W: w, H: Math.max(7, Math.round(w * 0.52) | 1), dens: d };
+  };
 
   function renderSigil(seed) {
     currentSeed = seed >>> 0;
+    const { W, H, dens } = forgeOpts();
     const out = $('#forge-out');
     const tag = $('#forge-seed');
-    if (out) out.textContent = forgeSigil(currentSeed);
-    if (tag) tag.textContent = 'seed: ' + currentSeed;
-    const input = $('#forge-input');
-    if (input) input.value = '';
+    if (out) out.textContent = forgeSigil(currentSeed, W, H, dens);
+    if (tag) tag.textContent = `seed: ${currentSeed} · ${W}×${H}`;
     return currentSeed;
+  }
+
+  function sigilToPng(seed) {
+    const { W, H, dens } = forgeOpts();
+    const art = forgeSigil(seed, W, H, dens).split('\n');
+    const cell = 22;
+    const pad = 40;
+    const cv = document.createElement('canvas');
+    cv.width = W * cell + pad * 2;
+    cv.height = art.length * cell + pad * 2 + 34;
+    const ctx = cv.getContext('2d');
+    const accent = getComputedStyle(document.documentElement)
+      .getPropertyValue('--accent').trim() || '#ff8a1f';
+
+    ctx.fillStyle = '#070504';
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.font = `${cell}px ui-monospace, monospace`;
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = accent;
+    ctx.shadowColor = accent;
+    ctx.shadowBlur = 12;
+    art.forEach((row, i) => ctx.fillText(row, pad, pad + i * cell));
+    ctx.shadowBlur = 0;
+    ctx.font = '14px ui-monospace, monospace';
+    ctx.fillStyle = '#8a7f75';
+    ctx.fillText(`$CATE sigil · seed ${seed} · ${W}×${art.length}`, pad, cv.height - 34);
+    return cv;
   }
 
   function initForge() {
     if (!$('#forge-out')) return;
 
-    $('#forge-dig')?.addEventListener('click', () =>
-      renderSigil((Math.random() * 0xffffffff) >>> 0));
+    const sizeIn = $('#forge-size'), densIn = $('#forge-dens');
+    const sync = () => {
+      $('#forge-size-out').value = sizeIn.value;
+      $('#forge-dens-out').value = densIn.value;
+      renderSigil(currentSeed);
+    };
+    sizeIn?.addEventListener('input', sync);
+    densIn?.addEventListener('input', sync);
+
+    $('#forge-dig')?.addEventListener('click', () => {
+      renderSigil((Math.random() * 0xffffffff) >>> 0);
+      toast('sigil ' + currentSeed);
+    });
 
     $('#forge-copy')?.addEventListener('click', async () => {
-      if (currentSeed === null) return;
-      const txt = `$CATE sigil — seed ${currentSeed}\n\n${forgeSigil(currentSeed)}`;
-      const btn = $('#forge-copy');
-      const ok = await copyText(txt);
-      btn.textContent = ok ? '[ copied ]' : '[ failed ]';
-      setTimeout(() => { btn.textContent = '[ copy ]'; }, 1600);
+      const { W, H, dens } = forgeOpts();
+      const txt = `$CATE sigil — seed ${currentSeed}\n\n${forgeSigil(currentSeed, W, H, dens)}`;
+      toast(await copyText(txt) ? 'sigil copied' : 'copy blocked', 'ok');
+    });
+
+    $('#forge-png')?.addEventListener('click', () => {
+      const cv = sigilToPng(currentSeed);
+      cv.toBlob((blob) => {
+        if (!blob) { toast('png export failed', 'err'); return; }
+        const url = URL.createObjectURL(blob);
+        const a = el('a');
+        a.href = url;
+        a.download = `cate-sigil-${currentSeed}.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        toast('png saved');
+      }, 'image/png');
     });
 
     const load = () => {
       const raw = ($('#forge-input')?.value || '').trim();
       const n = parseInt(raw, 10);
-      if (!raw || !isFinite(n)) return;
+      if (!raw || !isFinite(n)) { toast('that is not a seed', 'err'); return; }
       renderSigil(clamp(n, 0, 0xffffffff));
+      $('#forge-input').value = '';
       $('#litterbox')?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' });
     };
     $('#forge-load')?.addEventListener('click', load);
@@ -514,15 +946,13 @@
       if (e.key === 'Enter') { e.preventDefault(); load(); }
     });
 
-    // the wall
     const wall = $('#gallery');
     if (wall) {
       GALLERY_SEEDS.forEach((seed) => {
-        const cell = document.createElement('button');
+        const cell = el('button', 'gallery__cell');
         cell.type = 'button';
-        cell.className = 'gallery__cell';
         cell.title = 'seed ' + seed;
-        cell.textContent = forgeSigil(seed, 13, 7);
+        cell.textContent = forgeSigil(seed, 13, 7, 0.5);
         cell.addEventListener('click', () => {
           renderSigil(seed);
           $('#forge-out')?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' });
@@ -534,30 +964,49 @@
     renderSigil(43415445);   // 0x43415445 — "CATE"
   }
 
-  /* ══ colony manifest ══════════════════════════════════
+  /* ══ colony ═══════════════════════════════════════════
      nothing is transmitted anywhere. the manifest is generated in the
-     browser and the count lives in localStorage. said plainly on screen. */
+     browser and the tallies live in localStorage. said plainly on screen. */
+  const SECTS = ['/dev/null', 'kernel panic', 'segfault', 'bone branches'];
+
   const djb2 = (str) => {
     let h = 5381;
     for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) >>> 0;
     return h.toString(16).padStart(8, '0');
   };
 
-  function colonyCount(delta = 0) {
-    let n = 0;
-    try {
-      n = parseInt(localStorage.getItem('den:colony') || '0', 10) || 0;
-      if (delta) { n += delta; localStorage.setItem('den:colony', String(n)); }
-    } catch { /* private mode */ }
-    const el = $('#counter-n');
-    if (el) el.textContent = String(n);
-    return n;
+  function readColony() {
+    try { return JSON.parse(localStorage.getItem('den:colony') || '{}') || {}; }
+    catch { return {}; }
+  }
+  function writeColony(data) {
+    try { localStorage.setItem('den:colony', JSON.stringify(data)); } catch { /* private mode */ }
+  }
+
+  function paintColony() {
+    const data = readColony();
+    const total = SECTS.reduce((n, s) => n + (data[s] || 0), 0);
+    const n = $('#counter-n');
+    if (n) n.textContent = String(total);
+
+    const roll = $('#sect-roll');
+    if (!roll) return;
+    roll.textContent = '';
+    SECTS.forEach((s) => {
+      const c = data[s] || 0;
+      const pct = total ? Math.round((c / total) * 100) : 0;
+      const li = el('li');
+      li.innerHTML =
+        `<span class="roll__top"><span>${s}</span><span class="hl">${c}</span></span>` +
+        `<span class="roll__bar"><span style="width:${pct}%"></span></span>`;
+      roll.appendChild(li);
+    });
   }
 
   function initColony() {
     const form = $('#colony-form');
     if (!form) return;
-    colonyCount(0);
+    paintColony();
 
     form.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -567,14 +1016,18 @@
 
       const handle = $('#c-handle').value.trim();
       const oath   = $('#c-oath').value.trim();
-      const sect   = (form.querySelector('input[name="sect"]:checked') || {}).value || '/dev/null';
+      const sect   = (form.querySelector('input[name="sect"]:checked') || {}).value || SECTS[0];
       const agreed = $('#c-agree').checked;
 
-      const fail = (msg) => { note.dataset.err = 'true'; note.textContent = '✗ ' + msg; };
+      const fail = (msg) => {
+        note.dataset.err = 'true';
+        note.textContent = '✗ ' + msg;
+        toast(msg, 'err');
+      };
 
-      if (!handle)  return fail('the colony needs something to call you.');
-      if (!oath)    return fail('an oath is one line. any line.');
-      if (!agreed)  return fail('tick the box. it is the only honest part of this page.');
+      if (!handle) return fail('the colony needs something to call you.');
+      if (!oath)   return fail('an oath is one line. any line.');
+      if (!agreed) return fail('tick the box. it is the only honest part of this page.');
 
       const stamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
       const sig = djb2(`${handle}|${sect}|${oath}|${stamp}`);
@@ -594,15 +1047,74 @@
 
       note.dataset.err = 'false';
       note.textContent = `✓ manifest signed — ${sig}. nothing left this browser.`;
-      colonyCount(1);
+
+      const data = readColony();
+      data[sect] = (data[sect] || 0) + 1;
+      writeColony(data);
+      paintColony();
+      toast('manifest signed · ' + sig);
       form.reset();
     });
 
     $('#receipt-copy')?.addEventListener('click', async () => {
-      const btn = $('#receipt-copy');
-      const ok = await copyText($('#colony-receipt').textContent);
-      btn.textContent = ok ? '[ copied ]' : '[ failed ]';
-      setTimeout(() => { btn.textContent = '[ copy manifest ]'; }, 1600);
+      toast(await copyText($('#colony-receipt').textContent) ? 'manifest copied' : 'copy blocked', 'ok');
+    });
+  }
+
+  /* ══ count-up stats ═══════════════════════════════════ */
+  function initCounters() {
+    const nodes = $$('[data-count]');
+    if (!nodes.length) return;
+    const fmt = (v, kind) =>
+      kind === 'pct' ? v + '%' : Math.round(v).toLocaleString('en-US');
+
+    if (reduced || !('IntersectionObserver' in window)) {
+      nodes.forEach((n) => { n.textContent = fmt(+n.dataset.count, n.dataset.fmt); });
+      return;
+    }
+    const io = new IntersectionObserver((entries, obs) => {
+      entries.forEach((e) => {
+        if (!e.isIntersecting) return;
+        obs.unobserve(e.target);
+        const target = +e.target.dataset.count;
+        const kind = e.target.dataset.fmt;
+        const dur = 900;
+        const t0 = performance.now();
+        const step = (t) => {
+          const p = clamp((t - t0) / dur, 0, 1);
+          const eased = 1 - Math.pow(1 - p, 3);
+          e.target.textContent = fmt(target * eased, kind);
+          if (p < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      });
+    }, { threshold: 0.4 });
+    nodes.forEach((n) => io.observe(n));
+  }
+
+  /* ══ tabs ═════════════════════════════════════════════ */
+  function initTabs() {
+    $$('.tab').forEach((tab) => tab.addEventListener('click', () => {
+      const root = tab.closest('.panel');
+      $$('.tab', root).forEach((t) => {
+        const on = t === tab;
+        t.classList.toggle('is-on', on);
+        t.setAttribute('aria-selected', String(on));
+      });
+      $$('.tabpane', root).forEach((p) =>
+        p.classList.toggle('is-on', p.dataset.pane === tab.dataset.tab));
+    }));
+  }
+
+  /* ══ spotlight ════════════════════════════════════════ */
+  function initSpotlight() {
+    if (reduced) return;
+    $$('.spot').forEach((card) => {
+      card.addEventListener('mousemove', (e) => {
+        const r = card.getBoundingClientRect();
+        card.style.setProperty('--mx', `${e.clientX - r.left}px`);
+        card.style.setProperty('--my', `${e.clientY - r.top}px`);
+      }, { passive: true });
     });
   }
 
@@ -615,6 +1127,7 @@
     const label = $('#theme-name');
     if (label) label.textContent = name;
     try { localStorage.setItem('den:theme', name); } catch { /* private mode */ }
+    if (lastStats) pullStats();
     return true;
   }
 
@@ -630,7 +1143,10 @@
     setTheme(THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length]);
   }
 
-  /* ══ nav ══════════════════════════════════════════════ */
+  /* ══ nav + rail + scroll progress ═════════════════════ */
+  const SECTION_IDS = ['readme', 'lives', 'tokenomics', 'market', 'buy', 'lore',
+                       'litterbox', 'ledger', 'commits', 'stack', 'colony', 'faq'];
+
   function initNav() {
     const nav    = $('#nav');
     const toggle = $('#nav-toggle');
@@ -640,35 +1156,80 @@
       nav.dataset.open = String(!open);
       toggle.setAttribute('aria-expanded', String(!open));
     });
-
     $$('#nav a').forEach((a) => a.addEventListener('click', () => {
       if (nav) nav.dataset.open = 'false';
       toggle?.setAttribute('aria-expanded', 'false');
     }));
 
-    const links = new Map($$('#nav a').map((a) => [a.getAttribute('href').slice(1), a]));
+    // side rail
+    const railList = $('#rail-list');
+    if (railList) {
+      // the section id is already short and won't wrap mid-word
+      SECTION_IDS.forEach((id) => {
+        if (!document.getElementById(id)) return;
+        const li = el('li');
+        li.innerHTML = `<a href="#${id}">${id}</a>`;
+        railList.appendChild(li);
+      });
+    }
+
+    const targets = new Map();
+    $$('#nav a').forEach((a) => targets.set(a.getAttribute('href').slice(1), a));
+    $$('#rail-list a').forEach((a) => {
+      const id = a.getAttribute('href').slice(1);
+      targets.set(id, targets.has(id) ? [targets.get(id), a].flat() : a);
+    });
+
     const spy = new IntersectionObserver((entries) => {
       entries.forEach((e) => {
-        const link = links.get(e.target.id);
-        if (!link) return;
-        if (e.isIntersecting) {
-          links.forEach((l) => l.removeAttribute('aria-current'));
-          link.setAttribute('aria-current', 'true');
-        }
+        if (!e.isIntersecting) return;
+        $$('#nav a, #rail-list a').forEach((l) => l.removeAttribute('aria-current'));
+        [$(`#nav a[href="#${e.target.id}"]`), $(`#rail-list a[href="#${e.target.id}"]`)]
+          .filter(Boolean).forEach((l) => l.setAttribute('aria-current', 'true'));
       });
     }, { rootMargin: '-45% 0px -50% 0px' });
 
-    links.forEach((_, id) => {
-      const target = document.getElementById(id);
-      if (target) spy.observe(target);
+    SECTION_IDS.forEach((id) => {
+      const t = document.getElementById(id);
+      if (t) spy.observe(t);
     });
   }
 
-  /* ══ reveal ═══════════════════════════════════════════ */
+  function initScrollMeta() {
+    const fill = $('#scrollbar-fill');
+    const pos  = $('#hud-pos');
+    const up   = $('#hud-up');
+    const sid  = $('#hud-sid');
+
+    if (sid) sid.textContent = djb2(String(performance.now())).slice(0, 5);
+
+    const t0 = Date.now();
+    setInterval(() => {
+      if (!up) return;
+      const s = Math.floor((Date.now() - t0) / 1000);
+      up.textContent = `${String((s / 60) | 0).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+    }, 1000);
+
+    let queued = false;
+    const onScroll = () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => {
+        queued = false;
+        const max = document.documentElement.scrollHeight - innerHeight;
+        const p = max > 0 ? clamp((scrollY / max) * 100, 0, 100) : 0;
+        if (fill) fill.style.width = p + '%';
+        if (pos) pos.textContent = Math.round(p) + '%';
+      });
+    };
+    addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
   function initReveal() {
     const items = $$('.reveal');
     if (reduced || !('IntersectionObserver' in window)) {
-      items.forEach((el) => el.classList.add('is-in'));
+      items.forEach((e) => e.classList.add('is-in'));
       return;
     }
     const io = new IntersectionObserver((entries, obs) => {
@@ -678,13 +1239,90 @@
         obs.unobserve(e.target);
       });
     }, { rootMargin: '0px 0px -10% 0px', threshold: 0.05 });
-    items.forEach((el) => io.observe(el));
+    items.forEach((e) => io.observe(e));
+  }
+
+  /* ══ command palette ══════════════════════════════════ */
+  let runCommand = () => {};
+
+  function initCmdk() {
+    const box   = $('#cmdk');
+    const input = $('#cmdk-input');
+    const list  = $('#cmdk-list');
+    if (!box) return;
+
+    const ACTIONS = [
+      ...SECTION_IDS.map((id) => ({
+        label: 'go to ' + id, kind: 'jump',
+        run: () => document.getElementById(id)
+          ?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' }),
+      })),
+      { label: 'copy contract address', kind: 'action', run: copyCA },
+      { label: 'dig a new sigil', kind: 'action', run: () => { renderSigil((Math.random() * 0xffffffff) >>> 0); toast('sigil ' + currentSeed); } },
+      { label: 'export sigil as png', kind: 'action', run: () => $('#forge-png')?.click() },
+      { label: 'open console', kind: 'action', run: () => runCommand('help') },
+      { label: 'live price', kind: 'action', run: () => runCommand('price') },
+      { label: 'pools', kind: 'action', run: () => runCommand('pools') },
+      { label: 'nine lives', kind: 'action', run: () => runCommand('lives') },
+      ...THEMES.map((t) => ({ label: 'theme: ' + t, kind: 'theme', run: () => setTheme(t) })),
+    ];
+
+    let shown = [], active = 0;
+
+    const paint = () => {
+      list.textContent = '';
+      shown.forEach((a, i) => {
+        const li = el('li', i === active ? 'is-on' : '');
+        li.innerHTML = `<span>${a.label}</span><span class="k">${a.kind}</span>`;
+        li.addEventListener('click', () => { close(); a.run(); });
+        li.addEventListener('mousemove', () => {
+          if (active === i) return;
+          active = i; paint();
+        });
+        list.appendChild(li);
+      });
+    };
+
+    const filter = () => {
+      const q = input.value.trim().toLowerCase();
+      shown = !q ? ACTIONS.slice(0, 40)
+        : ACTIONS.filter((a) => {
+            // subsequence match: "gtm" finds "go to market"
+            let i = 0;
+            for (const ch of a.label.toLowerCase()) if (ch === q[i]) i++;
+            return i === q.length || a.label.toLowerCase().includes(q);
+          }).slice(0, 40);
+      active = 0;
+      paint();
+    };
+
+    const open = () => {
+      box.hidden = false;
+      input.value = '';
+      filter();
+      input.focus();
+    };
+    const close = () => { box.hidden = true; };
+
+    $('#cmdk-scrim')?.addEventListener('click', close);
+    $('#palette-btn')?.addEventListener('click', open);
+    input.addEventListener('input', filter);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') { e.preventDefault(); active = (active + 1) % shown.length; paint(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); active = (active - 1 + shown.length) % shown.length; paint(); }
+      else if (e.key === 'Enter') { e.preventDefault(); const a = shown[active]; close(); a?.run(); }
+      else if (e.key === 'Escape') { close(); }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        box.hidden ? open() : close();
+      }
+    });
   }
 
   /* ══ console ══════════════════════════════════════════ */
-  const SECTIONS = ['readme', 'lives', 'tokenomics', 'buy', 'lore',
-                    'litterbox', 'commits', 'stack', 'colony', 'faq'];
-
   const FILES = {
     'README.md':
       'cate was not minted. she was compiled — assembled out of dead repos,\n' +
@@ -695,6 +1333,8 @@
     'lives.txt':
       'nine lives. four spent, one burning, four sealed.\n' +
       'run `lives` for the manifest.',
+    'ledger.log':
+      '10 entries. run `ledger`.',
     'secrets.txt':
       'permission denied. (nice try.)',
   };
@@ -716,42 +1356,39 @@
       out.textContent += '\n' + text;
       out.scrollTop = out.scrollHeight;
     };
-
     const setOpen = (open) => {
       box.dataset.open = String(open);
       handle.setAttribute('aria-expanded', String(open));
       if (open) input.focus();
     };
     consoleOpen = setOpen;
-
     handle.addEventListener('click', () => setOpen(box.dataset.open !== 'true'));
 
     const COMMANDS = {
       help: () => write(
         'commands:\n' +
-        '  ca                print the contract address\n' +
-        '  copy              copy the contract to clipboard\n' +
+        '  ca / copy         print or copy the contract\n' +
         '  price             live price / mcap / 24h\n' +
-        '  buy               where to swap\n' +
-        '  chart             open the chart\n' +
+        '  pools             every pool holding $CATE\n' +
+        '  chart / buy       open the chart · how to buy\n' +
         '  tokenomics        supply, tax, authorities\n' +
         '  verify            check every claim yourself\n' +
         '  lives             the nine lives manifest\n' +
         '  lore [status]     lore war threads\n' +
-        '  dig [seed]        forge a sigil in the terminal\n' +
+        '  ledger            the append-only record\n' +
+        '  dig [seed]        forge a sigil here\n' +
+        '  png               export the current sigil\n' +
         '  whoami            who is cate\n' +
-        '  ls                list sections    (ls -a for files)\n' +
+        '  ls / ls -a        sections · files\n' +
         '  cd <section>      scroll to a section\n' +
         '  cat <file>        read a file\n' +
         '  theme [name]      ' + THEMES.join(' | ') + '\n' +
         '  neofetch          system info\n' +
-        '  clear             wipe the buffer\n' +
-        '  exit              close the console'
+        '  clear / exit      wipe · close'
       ),
 
       ca: () => write(CA + (CA_IS_REAL ? '' : '\n(placeholder — not a live contract yet)')),
-
-      copy: async () => write(await copyCA() ? 'contract copied to clipboard.' : 'copy blocked — select it manually.'),
+      copy: async () => { await copyCA(); },
 
       price: () => {
         if (!CA_IS_REAL) { write('no contract wired up yet. check back at launch.'); return; }
@@ -760,94 +1397,84 @@
         write(
           `price   ${fmtUsd(s.price)}\n` +
           `mcap    ${fmtBig(s.mcap)}\n` +
-          `24h     ${isFinite(s.change) ? (s.change >= 0 ? '+' : '') + s.change.toFixed(2) + '%' : '—'}\n` +
+          `24h     ${fmtPct(s.change)}\n` +
           `liq     ${fmtBig(s.liq)}\n` +
-          `txns    ${s.txns || '—'}\n` +
-          `dex     ${s.dex}`
+          `vol     ${fmtBig(s.vol)}\n` +
+          `txns    ${s.buys} buys / ${s.sells} sells\n` +
+          `dex     ${s.dex}  (${s.pools} pools)`
         );
       },
 
-      lives: () => {
-        const rows = Object.entries(LIVES).map(([n, [name, state]]) =>
-          `  ${String(n).padStart(2)}  ${name.padEnd(14)} ${state}`);
-        write('nine lives — four spent, one burning, four sealed\n' + rows.join('\n'));
+      pools: () => {
+        if (!lastPools.length) { write('no pools yet.'); return; }
+        write(lastPools.slice(0, 10).map((p) =>
+          `  ${(p.dexId || '?').padEnd(10)} ${fmtBig(p.liquidity?.usd).padStart(9)} liq` +
+          `  ${fmtBig(p.volume?.h24).padStart(9)} vol`).join('\n'));
       },
+
+      lives: () => write('nine lives — four spent, one burning, four sealed\n' +
+        LIVES.map(([n, s], i) => `  ${ROMAN[i + 1].padEnd(4)} ${n.padEnd(14)} ${s}`).join('\n')),
 
       lore: (args) => {
         const want = (args[0] || '').toLowerCase();
-        const rows = $$('.thread')
-          .filter((t) => !want || t.dataset.status === want)
-          .map((t) => `  ${$('.thread__id', t).textContent}  [${t.dataset.status.padEnd(8)}] ` +
-                      `${$('h3', t).textContent}`);
-        if (!rows.length) { write(`no threads with status "${want}".`); return; }
-        write(rows.join('\n'));
+        const rows = THREADS.filter(([, st]) => !want || st === want)
+          .map(([id, st, r, title]) => `  #${id}  [${st.padEnd(8)}] ${title}  (${r})`);
+        write(rows.length ? rows.join('\n') : `no threads with status "${want}".`);
       },
+
+      ledger: () => write(LEDGER.map(([n, ev, d, s]) =>
+        `  ${n}  ${ev.padEnd(8)} ${d}  [${s}]`).join('\n')),
 
       dig: (args) => {
         const n = parseInt(args[0], 10);
         const seed = isFinite(n) ? clamp(n, 0, 0xffffffff) : (Math.random() * 0xffffffff) >>> 0;
         renderSigil(seed);
-        write(`seed ${seed}\n\n${forgeSigil(seed, 17, 9)}\n\n(also rendered in the litterbox)`);
+        write(`seed ${seed}\n\n${forgeSigil(seed, 17, 9, 0.5)}\n\n(also rendered in the litterbox)`);
       },
+
+      png: () => { $('#forge-png')?.click(); write(`exporting sigil ${currentSeed}…`); },
 
       buy: () => {
         write('pump.fun · jupiter · raydium — paste the contract, set slippage, confirm.');
         document.getElementById('buy')?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' });
       },
-
       chart: () => {
         const url = CA_IS_REAL ? DEX_PAGE + CA : 'https://dexscreener.com/solana';
         write('opening ' + url);
         window.open(url, '_blank', 'noopener');
       },
-
       tokenomics: () => write(
         'supply    1,000,000,000\ntax       0 / 0\nmint      revoked\n' +
-        'freeze    revoked\nlp        burned\nteam      0%'
-      ),
-
-      verify: () => write(
-        "don't trust. verify:\n" +
-        '  spl-token supply <contract>\n' +
-        '  spl-token display <contract>\n' +
-        '  rugcheck.xyz/tokens/<contract>'
-      ),
-
+        'freeze    revoked\nlp        burned\nteam      0%'),
+      verify: () => write("don't trust. verify:\n" +
+        '  spl-token supply <contract>\n  spl-token display <contract>\n  rugcheck.xyz/tokens/<contract>'),
       whoami: () => write(
         'cate — cybernetic autonomous terminal entity.\n' +
         'compiled, not minted. nine lives, four spent.\n' +
-        'does not have a roadmap. has a commit history.'
-      ),
-
-      ls: (args) => {
-        if (args[0] === '-a') { write(Object.keys(FILES).join('  ')); return; }
-        write(SECTIONS.map((s) => s + '/').join('  '));
-      },
-
+        'does not have a roadmap. has a commit history.'),
+      ls: (args) => write(args[0] === '-a'
+        ? Object.keys(FILES).join('  ')
+        : SECTION_IDS.map((s) => s + '/').join('  ')),
       cd: (args) => {
-        const target = (args[0] || '').replace(/\/+$/, '');
-        if (!target || target === '~') {
+        const t = (args[0] || '').replace(/\/+$/, '');
+        if (!t || t === '~') {
           document.getElementById('top')?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' });
           write('~'); return;
         }
-        if (!SECTIONS.includes(target)) { write(`cd: no such section: ${target}`); return; }
-        document.getElementById(target)?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' });
-        write(`~/${target}`);
+        if (!SECTION_IDS.includes(t)) { write(`cd: no such section: ${t}`); return; }
+        document.getElementById(t)?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' });
+        write(`~/${t}`);
       },
-
       cat: (args) => {
-        const name = args[0];
-        if (!name) { write('cat: missing operand'); return; }
-        if (name in FILES) { write(FILES[name]); return; }
-        write(`cat: ${name}: no such file`);
+        const n = args[0];
+        if (!n) { write('cat: missing operand'); return; }
+        write(n in FILES ? FILES[n] : `cat: ${n}: no such file`);
       },
-
       theme: (args) => {
         if (!args[0]) { cycleTheme(); write(`palette → ${document.documentElement.dataset.theme}`); return; }
-        if (setTheme(args[0])) write(`palette → ${args[0]}`);
-        else write(`theme: unknown palette: ${args[0]} (try: ${THEMES.join(', ')})`);
+        write(setTheme(args[0]) ? `palette → ${args[0]}`
+          : `theme: unknown palette: ${args[0]} (try: ${THEMES.join(', ')})`);
       },
-
       neofetch: () => write(
         '  ▄▄▄▄   $CATE@den\n' +
         ' █▓▓▓▓█  ──────────\n' +
@@ -857,13 +1484,11 @@
         '         lp      burned\n' +
         '         lives   5/9\n' +
         '         deps    0\n' +
-        '         theme   ' + (document.documentElement.dataset.theme || 'ember')
-      ),
-
+        '         theme   ' + (document.documentElement.dataset.theme || 'ember')),
       date:  () => write(new Date().toString()),
-      echo:  (args) => write(args.join(' ')),
+      echo:  (a) => write(a.join(' ')),
       clear: () => { out.textContent = ''; },
-      exit:  () => { setOpen(false); },
+      exit:  () => setOpen(false),
       sudo:  () => write('cate is not in the sudoers file. this incident has been logged. ⛧'),
       rm:    () => write('nice try.'),
       wen:   () => write('now. it already launched. scroll up.'),
@@ -871,20 +1496,24 @@
       pet:   () => write('  /\\_/\\   \n ( -.- )  she allows it.\n  > ^ <   '),
     };
 
+    const exec = (raw) => {
+      write(`\ncate@den:~$ ${raw}`);
+      const [cmd, ...args] = raw.split(/\s+/);
+      const fn = COMMANDS[cmd.toLowerCase()];
+      if (fn) fn(args);
+      else write(`${cmd}: command not found. type \`help\`.`);
+    };
+
+    runCommand = (line) => { setOpen(true); exec(line); };
+
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const raw = input.value.trim();
       input.value = '';
       if (!raw) return;
-
-      write(`\ncate@den:~$ ${raw}`);
       history.unshift(raw);
       hIndex = -1;
-
-      const [cmd, ...args] = raw.split(/\s+/);
-      const fn = COMMANDS[cmd.toLowerCase()];
-      if (fn) fn(args);
-      else write(`${cmd}: command not found. type \`help\`.`);
+      exec(raw);
     });
 
     input.addEventListener('keydown', (e) => {
@@ -895,36 +1524,28 @@
         e.preventDefault();
         if (hIndex > 0) input.value = history[--hIndex];
         else { hIndex = -1; input.value = ''; }
-      } else if (e.key === 'Escape') {
-        setOpen(false); input.blur();
-      }
+      } else if (e.key === 'Escape') { setOpen(false); input.blur(); }
     });
 
-    $$('[data-console]').forEach((b) => b.addEventListener('click', () => {
-      setOpen(true);
-      input.value = b.dataset.console;
-      form.requestSubmit();
-    }));
+    $$('[data-console]').forEach((b) =>
+      b.addEventListener('click', () => runCommand(b.dataset.console)));
 
-    /* global shortcuts */
     document.addEventListener('keydown', (e) => {
       const tag = document.activeElement?.tagName;
       const typing = tag === 'INPUT' || tag === 'TEXTAREA';
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (!$('#cmdk')?.hidden) return;
 
-      if (e.key === '/' && !typing) {
-        e.preventDefault(); setOpen(true);
-      } else if (e.key.toLowerCase() === 't' && !typing) {
-        cycleTheme();
-      } else if (e.key.toLowerCase() === 'g' && !typing) {
+      if (e.key === '/' && !typing) { e.preventDefault(); setOpen(true); }
+      else if (e.key.toLowerCase() === 't' && !typing) cycleTheme();
+      else if (e.key.toLowerCase() === 'g' && !typing) {
         renderSigil((Math.random() * 0xffffffff) >>> 0);
+        toast('sigil ' + currentSeed);
         $('#litterbox')?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' });
       } else if (/^[1-7]$/.test(e.key) && !typing) {
         const link = $(`#nav a[data-key="${e.key}"]`);
-        if (link) {
-          const id = link.getAttribute('href').slice(1);
-          document.getElementById(id)?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' });
-        }
+        if (link) document.getElementById(link.getAttribute('href').slice(1))
+          ?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' });
       }
     });
   }
@@ -947,13 +1568,13 @@
           '\n\n⛧⛧⛧ THE TENTH LIFE ⛧⛧⛧\n' +
           'there was never a tenth life.\n' +
           'you found the place where one would go.\n\n' +
-          forgeSigil(1010101, 17, 9) + '\n';
+          forgeSigil(1010101, 17, 9, 0.6) + '\n';
         out.scrollTop = out.scrollHeight;
       }
+      toast('⛧ the tenth life ⛧');
     });
   }
 
-  /* ══ misc ═════════════════════════════════════════════ */
   function chrono() {
     const year = $('#year');
     if (year) year.textContent = new Date().getFullYear();
@@ -962,14 +1583,23 @@
   /* ── go ────────────────────────────────────────────── */
   initTheme();
   initRain();
+  initCat();
   initNav();
+  initScrollMeta();
   initReveal();
   initCA();
-  initStats();
   initLives();
   initLore();
+  initLedger();
+  initCommits();
+  initFaq();
   initForge();
   initColony();
+  initCounters();
+  initTabs();
+  initSpotlight();
+  initStats();
+  initCmdk();
   initConsole();
   initKonami();
   chrono();

@@ -27,12 +27,14 @@
   <div class="boot__inner">
     <pre id="boot-log" class="boot__log"></pre>
     <div class="boot__bar"><span id="boot-fill"></span></div>
+    <div class="boot__meta"><span id="boot-pct">0%</span><span id="boot-task">…</span></div>
     <button id="boot-skip" class="boot__skip" type="button">[ press any key to skip ]</button>
   </div>
 </div>
 
 <!-- ══════════════════ atmosphere ══════════════════ -->
 <canvas id="rain" class="rain" aria-hidden="true"></canvas>
+<div class="grain" aria-hidden="true"></div>
 <div class="crt" aria-hidden="true">
   <div class="crt__scanlines"></div>
   <div class="crt__vignette"></div>
@@ -60,24 +62,28 @@
       <a href="#readme"     data-key="1">readme</a>
       <a href="#lives"      data-key="2">lives</a>
       <a href="#tokenomics" data-key="3">coin</a>
-      <a href="#lore"       data-key="4">lore</a>
-      <a href="#litterbox"  data-key="5">litterbox</a>
-      <a href="#commits"    data-key="6">log</a>
+      <a href="#market"     data-key="4">market</a>
+      <a href="#lore"       data-key="5">lore</a>
+      <a href="#litterbox"  data-key="6">litterbox</a>
       <a href="#colony"     data-key="7">colony</a>
+      <button class="kbd-btn" id="palette-btn" type="button" title="command palette (ctrl+k)">
+        <span aria-hidden="true">⌘</span>K
+      </button>
       <button class="theme-btn" id="theme-btn" type="button" title="cycle palette (t)">
         <span class="theme-btn__dot" aria-hidden="true"></span><span id="theme-name">ember</span>
       </button>
     </nav>
   </div>
 
-  <!-- live strip -->
   <div class="strip" id="strip">
     <div class="wrap strip__inner">
       <span class="strip__item"><i>price</i><b id="s-price">—</b></span>
       <span class="strip__item"><i>mcap</i><b id="s-mcap">—</b></span>
       <span class="strip__item"><i>24h</i><b id="s-change">—</b></span>
       <span class="strip__item"><i>liq</i><b id="s-liq">—</b></span>
+      <span class="strip__item"><i>vol</i><b id="s-vol">—</b></span>
       <span class="strip__item strip__item--pulse"><i>status</i><b id="s-status">idle</b></span>
+      <span class="strip__spark"><canvas id="spark-mini" width="120" height="18" aria-hidden="true"></canvas></span>
     </div>
   </div>
 
@@ -86,7 +92,18 @@
       <span>⛧ $CATE ⛧ nine lives four spent ⛧ lp burned ⛧ mint revoked ⛧ contract renounced ⛧ the cat compiles ⛧ 0x43415445 ⛧ no roadmap only commits ⛧ ☠ ⛧ she reads the chain ⛧ she writes to it ⛧ ‡ ⛧ $CATE ⛧ nine lives four spent ⛧ lp burned ⛧ mint revoked ⛧ contract renounced ⛧ the cat compiles ⛧ 0x43415445 ⛧ no roadmap only commits ⛧ ☠ ⛧ she reads the chain ⛧ she writes to it ⛧ ‡ ⛧</span>
     </div>
   </div>
+  <div class="scrollbar" id="scrollbar" aria-hidden="true"><span id="scrollbar-fill"></span></div>
 </header>
+
+<!-- ══════════════════ side rail ══════════════════ -->
+<aside class="rail" id="rail" aria-hidden="true">
+  <ol class="rail__list" id="rail-list"></ol>
+  <div class="rail__hud">
+    <span><i>sid</i><b id="hud-sid">—</b></span>
+    <span><i>up</i><b id="hud-up">00:00</b></span>
+    <span><i>pos</i><b id="hud-pos">0%</b></span>
+  </div>
+</aside>
 
 <main id="main">
 <span id="top"></span>
@@ -114,17 +131,10 @@
     </p>
 
     <div class="hero__grid">
-      <pre class="sigil" id="hero-sigil" aria-label="ascii cat skull">
-        ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
-      ▄█░░░░░░░░░░░░░░░█▄
-     █░░▄▄▄▄░░░░░░▄▄▄▄░░█
-     █░░█▓▓█░░░░░░█▓▓█░░█
-     █░░▀▀▀▀░░░░░░▀▀▀▀░░█
-     █░░░░░░░░▄█▄░░░░░░░█
-     ▀█░░░░░░▀███▀░░░░░█▀
-       ▀█▄░▄█▄▄▄▄▄█▄░▄█▀
-         ▀█ █ █ █ █ █▀
-            ▀ ▀ ▀ ▀</pre>
+      <div class="hero__cat">
+        <pre class="sigil" id="cat" aria-label="ascii cat skull"></pre>
+        <span class="hero__cat-hint dim">she is watching the cursor</span>
+      </div>
 
       <div class="hero__side">
         <p class="hero__blurb">
@@ -157,7 +167,7 @@
       <div><dt>24h</dt><dd id="m-change">—</dd></div>
       <div><dt>liquidity</dt><dd id="m-liq">—</dd></div>
       <div><dt>vol 24h</dt><dd id="m-vol">—</dd></div>
-      <div><dt>holders</dt><dd id="m-txns">—</dd></div>
+      <div><dt>txns 24h</dt><dd id="m-txns">—</dd></div>
     </dl>
     <p class="metrics__note dim" id="metrics-note">live feed idle — awaiting a real contract address.</p>
   </div>
@@ -181,7 +191,7 @@
   <h2 class="sect__h"><span class="sect__num">01</span> readme.md</h2>
 
   <div class="grid grid--split">
-    <div class="panel panel--bracket">
+    <div class="panel panel--bracket spot">
       <div class="panel__bar">~/cate/README.md</div>
       <div class="panel__body prose">
         <p>
@@ -216,13 +226,12 @@
         <li><span class="bul">‡</span> ship commits, not promises</li>
       </ul>
 
-      <pre class="mini-art" aria-hidden="true">
-   ╔═══════════════════════╗
-   ║  compiled, not minted ║
-   ║   /\_/\               ║
-   ║  ( o.o )   nine lives ║
-   ║   > ^ <    four spent ║
-   ╚═══════════════════════╝</pre>
+      <div class="statgrid">
+        <div class="stat"><b data-count="1000000000" data-fmt="int">0</b><i>supply</i></div>
+        <div class="stat"><b data-count="9" data-fmt="int">0</b><i>lives</i></div>
+        <div class="stat"><b data-count="0" data-fmt="pct">0</b><i>tax</i></div>
+        <div class="stat"><b data-count="0" data-fmt="pct">0</b><i>team</i></div>
+      </div>
     </div>
   </div>
 </section>
@@ -235,37 +244,9 @@
     <span class="dim">a life spent is not recoverable.</span>
   </p>
 
-  <div class="lives" id="lives-grid">
-    <button class="life is-spent" data-life="1" type="button" aria-expanded="false">
-      <span class="life__n">I</span><span class="life__name">the compile</span><span class="life__state">spent</span>
-    </button>
-    <button class="life is-spent" data-life="2" type="button" aria-expanded="false">
-      <span class="life__n">II</span><span class="life__name">the mint</span><span class="life__state">spent</span>
-    </button>
-    <button class="life is-spent" data-life="3" type="button" aria-expanded="false">
-      <span class="life__n">III</span><span class="life__name">the burn</span><span class="life__state">spent</span>
-    </button>
-    <button class="life is-spent" data-life="4" type="button" aria-expanded="false">
-      <span class="life__n">IV</span><span class="life__name">the den</span><span class="life__state">spent</span>
-    </button>
-    <button class="life is-burning" data-life="5" type="button" aria-expanded="false">
-      <span class="life__n">V</span><span class="life__name">the terminal</span><span class="life__state">burning</span>
-    </button>
-    <button class="life is-sealed" data-life="6" type="button" aria-expanded="false">
-      <span class="life__n">VI</span><span class="life__name">the litterbox</span><span class="life__state">sealed</span>
-    </button>
-    <button class="life is-sealed" data-life="7" type="button" aria-expanded="false">
-      <span class="life__n">VII</span><span class="life__name">the colony</span><span class="life__state">sealed</span>
-    </button>
-    <button class="life is-sealed" data-life="8" type="button" aria-expanded="false">
-      <span class="life__n">VIII</span><span class="life__name">the fork</span><span class="life__state">sealed</span>
-    </button>
-    <button class="life is-sealed" data-life="9" type="button" aria-expanded="false">
-      <span class="life__n">IX</span><span class="life__name">[ redacted ]</span><span class="life__state">sealed</span>
-    </button>
-  </div>
+  <div class="lives" id="lives-grid"></div>
 
-  <div class="life-out panel" id="life-out" hidden>
+  <div class="life-out panel panel--bracket" id="life-out" hidden>
     <div class="panel__bar" id="life-out-bar">~/cate/lives/</div>
     <div class="panel__body"><pre class="life-out__text" id="life-out-text"></pre></div>
   </div>
@@ -277,9 +258,14 @@
   <p class="sect__lede">it's a config file, not a pitch deck.</p>
 
   <div class="grid grid--split">
-    <div class="panel panel--bracket">
-      <div class="panel__bar">~/cate/cate.config.toml</div>
+    <div class="panel panel--bracket spot">
+      <div class="tabs" role="tablist" aria-label="token documents">
+        <button class="tab is-on" role="tab" aria-selected="true"  data-tab="toml">cate.config.toml</button>
+        <button class="tab"       role="tab" aria-selected="false" data-tab="verify">verify.sh</button>
+        <button class="tab"       role="tab" aria-selected="false" data-tab="risks">risks.md</button>
+      </div>
       <div class="panel__body">
+        <div class="tabpane is-on" data-pane="toml">
 <pre class="code"><span class="c-com"># the whole thing. that's it. that's the tokenomics.</span>
 <span class="c-key">[token]</span>
 name     = <span class="c-str">"cate"</span>
@@ -307,6 +293,41 @@ presale  = <span class="c-num">0</span>
 airdrop  = <span class="c-num">0</span>
 market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool at launch</span>
 </pre>
+        </div>
+        <div class="tabpane" data-pane="verify">
+<pre class="code"><span class="c-com"># don't trust. verify. every claim is checkable.</span>
+<span class="c-fn">spl-token</span> supply <span class="c-str">&lt;contract&gt;</span>
+<span class="c-com"># → 1000000000</span>
+
+<span class="c-fn">spl-token</span> display <span class="c-str">&lt;contract&gt;</span>
+<span class="c-com"># → Mint Authority:   (none)</span>
+<span class="c-com"># → Freeze Authority: (none)</span>
+
+<span class="c-fn">curl</span> -s api.dexscreener.com/latest/dex/tokens/<span class="c-str">&lt;ca&gt;</span> \
+  | <span class="c-fn">jq</span> <span class="c-str">'.pairs[0].liquidity'</span>
+
+<span class="c-com"># or paste the contract into rugcheck.xyz and read it.</span>
+</pre>
+        </div>
+        <div class="tabpane" data-pane="risks">
+<pre class="code"><span class="c-com"># things that can still go wrong. written by us, about us.</span>
+
+<span class="c-key">market risk</span>
+  the price can go to zero. memecoins usually do.
+
+<span class="c-key">liquidity risk</span>
+  lp is burned, so it cannot be pulled — but thin liquidity
+  still means slippage and a hard exit on the way out.
+
+<span class="c-key">key risk</span>
+  authorities are revoked. nobody can mint or freeze.
+  nobody can undo that either, including us.
+
+<span class="c-key">you</span>
+  the most common failure mode is buying more than you
+  can afford to watch go to zero.
+</pre>
+        </div>
       </div>
     </div>
 
@@ -338,9 +359,82 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
   </div>
 </section>
 
-<!-- ══════════════════ 04 how to buy ══════════════════ -->
+<!-- ══════════════════ 04 market ══════════════════ -->
+<section class="sect wrap reveal" id="market">
+  <h2 class="sect__h"><span class="sect__num">04</span> market</h2>
+  <p class="sect__lede">
+    live, straight from dexscreener. no backend, no key, no middleman.
+  </p>
+
+  <div class="market">
+    <div class="panel panel--bracket market__chart">
+      <div class="panel__bar">
+        ~/cate/market/price
+        <span class="market__badge" id="chart-badge">idle</span>
+      </div>
+      <div class="panel__body">
+        <canvas id="spark" class="spark" width="800" height="220" role="img"
+                aria-label="price trend over the last 24 hours"></canvas>
+        <div class="spark__legend">
+          <span id="spark-lo">—</span>
+          <span class="dim" id="spark-note">
+            reconstructed from the 24h / 6h / 1h / 5m change figures —
+            five points, not tick data.
+          </span>
+          <span id="spark-hi">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-stack">
+      <div class="panel panel--bracket">
+        <div class="panel__bar">buy / sell pressure · 24h</div>
+        <div class="panel__body">
+          <div class="pressure" id="pressure">
+            <span class="pressure__buy" id="pressure-buy" style="width:50%"></span>
+            <span class="pressure__sell" id="pressure-sell" style="width:50%"></span>
+          </div>
+          <div class="pressure__nums">
+            <span class="up">buys <b id="p-buys">—</b></span>
+            <span class="down"><b id="p-sells">—</b> sells</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel panel--bracket">
+        <div class="panel__bar">timeframes</div>
+        <div class="panel__body">
+          <ul class="tfs" id="tfs">
+            <li><i>5m</i><b data-tf="m5">—</b></li>
+            <li><i>1h</i><b data-tf="h1">—</b></li>
+            <li><i>6h</i><b data-tf="h6">—</b></li>
+            <li><i>24h</i><b data-tf="h24">—</b></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel panel--bracket panel--wide">
+    <div class="panel__bar">every pool holding $CATE <span class="dim" id="pools-count"></span></div>
+    <div class="panel__body">
+      <div class="table-wrap">
+        <table class="ptable">
+          <thead>
+            <tr><th>dex</th><th>pair</th><th>price</th><th>liquidity</th><th>vol 24h</th><th>24h</th></tr>
+          </thead>
+          <tbody id="pools">
+            <tr class="ptable__empty"><td colspan="6">no pools — the feed wakes up when a real contract is wired in.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ 05 how to buy ══════════════════ -->
 <section class="sect wrap reveal" id="buy">
-  <h2 class="sect__h"><span class="sect__num">04</span> how to buy</h2>
+  <h2 class="sect__h"><span class="sect__num">05</span> how to buy</h2>
   <p class="sect__lede">five commands. you've run worse.</p>
 
   <ol class="steps">
@@ -397,9 +491,9 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
   </div>
 </section>
 
-<!-- ══════════════════ 05 lore wars ══════════════════ -->
+<!-- ══════════════════ 06 lore wars ══════════════════ -->
 <section class="sect wrap reveal" id="lore">
-  <h2 class="sect__h"><span class="sect__num">05</span> lore wars</h2>
+  <h2 class="sect__h"><span class="sect__num">06</span> lore wars</h2>
   <p class="sect__lede">
     contested threads. anyone can argue. nobody can delete.
     <span class="dim">status is enforced by the colony, not by a mod.</span>
@@ -414,78 +508,13 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
     <button class="chip" data-filter="redacted" type="button">redacted</button>
   </div>
 
-  <ol class="threads" id="threads">
-    <li class="thread" data-status="bleeding">
-      <span class="thread__id">#001</span>
-      <div class="thread__body">
-        <h3>was the first compile an accident?</h3>
-        <p>four wallets claim they ran it. three of them didn't exist yet.</p>
-      </div>
-      <span class="thread__replies">142</span>
-      <span class="thread__status">bleeding</span>
-    </li>
-    <li class="thread" data-status="open">
-      <span class="thread__id">#002</span>
-      <div class="thread__body">
-        <h3>what did life III actually burn?</h3>
-        <p>the burn tx is public. what it bought is not.</p>
-      </div>
-      <span class="thread__replies">87</span>
-      <span class="thread__status">open</span>
-    </li>
-    <li class="thread" data-status="disputed">
-      <span class="thread__id">#003</span>
-      <div class="thread__body">
-        <h3>the cat is not one cat</h3>
-        <p>argument that "cate" is a process, not an entity. gains traction every
-        time she pushes at 4am.</p>
-      </div>
-      <span class="thread__replies">311</span>
-      <span class="thread__status">disputed</span>
-    </li>
-    <li class="thread" data-status="locked">
-      <span class="thread__id">#004</span>
-      <div class="thread__body">
-        <h3>the rent must be paid</h3>
-        <p>settled. it was paid. do not open this again.</p>
-      </div>
-      <span class="thread__replies">29</span>
-      <span class="thread__status">locked</span>
-    </li>
-    <li class="thread" data-status="open">
-      <span class="thread__id">#005</span>
-      <div class="thread__body">
-        <h3>nine is not a number, it's a limit</h3>
-        <p>on whether life IX can be spent at all, or only observed.</p>
-      </div>
-      <span class="thread__replies">64</span>
-      <span class="thread__status">open</span>
-    </li>
-    <li class="thread" data-status="redacted">
-      <span class="thread__id">#006</span>
-      <div class="thread__body">
-        <h3>████████ ███ ██████</h3>
-        <p>█████ ██ ████████ ███ █ ████████ ██████ ███ █████████.</p>
-      </div>
-      <span class="thread__replies">???</span>
-      <span class="thread__status">redacted</span>
-    </li>
-    <li class="thread" data-status="bleeding">
-      <span class="thread__id">#007</span>
-      <div class="thread__body">
-        <h3>who holds the keys that were destroyed?</h3>
-        <p>nobody. that's the point. the thread refuses to die anyway.</p>
-      </div>
-      <span class="thread__replies">203</span>
-      <span class="thread__status">bleeding</span>
-    </li>
-  </ol>
+  <ol class="threads" id="threads"></ol>
   <p class="threads__empty dim" id="threads-empty" hidden>no threads with that status.</p>
 </section>
 
-<!-- ══════════════════ 06 litterbox ══════════════════ -->
+<!-- ══════════════════ 07 litterbox ══════════════════ -->
 <section class="sect wrap reveal" id="litterbox">
-  <h2 class="sect__h"><span class="sect__num">06</span> the litterbox</h2>
+  <h2 class="sect__h"><span class="sect__num">07</span> the litterbox</h2>
   <p class="sect__lede">
     generative sigils, dug up rather than drawn. every one is deterministic —
     the seed <em>is</em> the artwork.
@@ -496,9 +525,22 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
       <div class="panel__bar">~/cate/litterbox/forge.sh <span class="forge__seed" id="forge-seed">seed: —</span></div>
       <div class="panel__body">
         <pre class="forge__out" id="forge-out" aria-live="polite">press [ dig ] to unearth a sigil.</pre>
+
+        <div class="forge__sliders">
+          <label>size
+            <input type="range" id="forge-size" min="11" max="31" step="2" value="21">
+            <output id="forge-size-out">21</output>
+          </label>
+          <label>density
+            <input type="range" id="forge-dens" min="0" max="100" step="5" value="50">
+            <output id="forge-dens-out">50</output>
+          </label>
+        </div>
+
         <div class="forge__controls">
           <button class="btn btn--solid" id="forge-dig" type="button">[ dig ]</button>
           <button class="btn" id="forge-copy" type="button">[ copy ]</button>
+          <button class="btn" id="forge-png" type="button">[ png ]</button>
           <label class="forge__field">
             <span class="sr">seed</span>
             <input id="forge-input" type="text" inputmode="numeric" placeholder="seed…" autocomplete="off" spellcheck="false">
@@ -506,7 +548,8 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
           <button class="btn" id="forge-load" type="button">[ load ]</button>
         </div>
         <p class="dim forge__note">
-          same seed, same sigil, forever. paste a seed to summon someone else's.
+          same seed + same settings, same sigil, forever. paste a seed to summon
+          someone else's. <kbd>g</kbd> digs from anywhere.
         </p>
       </div>
     </div>
@@ -519,77 +562,32 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
   </div>
 </section>
 
-<!-- ══════════════════ 07 git log ══════════════════ -->
-<section class="sect wrap reveal" id="commits">
-  <h2 class="sect__h"><span class="sect__num">07</span> git log</h2>
-  <p class="sect__lede">no roadmap. only commits. <span class="dim">$ git log --oneline --graph</span></p>
+<!-- ══════════════════ 08 ledger ══════════════════ -->
+<section class="sect wrap reveal" id="ledger">
+  <h2 class="sect__h"><span class="sect__num">08</span> the ledger</h2>
+  <p class="sect__lede">
+    append-only record of everything the den has done.
+    <span class="dim">authored history, not a chain read — verify anything on-chain yourself.</span>
+  </p>
 
-  <ol class="commits">
-    <li class="commit is-done">
-      <span class="commit__hash">a1c0ffe</span>
-      <div class="commit__body">
-        <h3>init: assemble the cat</h3>
-        <p>token minted, authorities revoked, lp burned. no announcement, no
-        countdown, no calls. it was just suddenly there.</p>
-      </div>
-      <span class="commit__state">merged</span>
-    </li>
-    <li class="commit is-done">
-      <span class="commit__hash">7ec4b1e</span>
-      <div class="commit__body">
-        <h3>feat: the den</h3>
-        <p>this site. no framework, no build step, no trackers. every byte
-        hand-placed.</p>
-      </div>
-      <span class="commit__state">merged</span>
-    </li>
-    <li class="commit is-done">
-      <span class="commit__hash">b0nef1re</span>
-      <div class="commit__body">
-        <h3>feat: nine lives</h3>
-        <p>the lore, on the page. four spent and named. one burning in public.</p>
-      </div>
-      <span class="commit__state">merged</span>
-    </li>
-    <li class="commit is-live">
-      <span class="commit__hash">HEAD</span>
-      <div class="commit__body">
-        <h3>feat: terminal</h3>
-        <p>an on-site console that reads the chain. price, supply, sigils —
-        without leaving the page. <span class="dim">press <kbd>/</kbd> to try it.</span></p>
-      </div>
-      <span class="commit__state">building</span>
-    </li>
-    <li class="commit">
-      <span class="commit__hash">next</span>
-      <div class="commit__body">
-        <h3>feat: the wall</h3>
-        <p>colony-curated sigils, minted by consensus. the good ones get merged.</p>
-      </div>
-      <span class="commit__state">queued</span>
-    </li>
-    <li class="commit">
-      <span class="commit__hash">next</span>
-      <div class="commit__body">
-        <h3>feat: lore wars v2</h3>
-        <p>threads that write to chain. arguments with a cost.</p>
-      </div>
-      <span class="commit__state">queued</span>
-    </li>
-    <li class="commit is-ghost">
-      <span class="commit__hash">??????</span>
-      <div class="commit__body">
-        <h3>[ redacted ]</h3>
-        <p>████ ██████ ██ ███ ████████ ███ █████████ ██████ ███ ████.</p>
-      </div>
-      <span class="commit__state">sealed</span>
-    </li>
-  </ol>
+  <div class="table-wrap">
+    <table class="ltable">
+      <thead><tr><th>#</th><th>event</th><th>detail</th><th>state</th></tr></thead>
+      <tbody id="ledger-body"></tbody>
+    </table>
+  </div>
 </section>
 
-<!-- ══════════════════ 08 the tech ══════════════════ -->
+<!-- ══════════════════ 09 git log ══════════════════ -->
+<section class="sect wrap reveal" id="commits">
+  <h2 class="sect__h"><span class="sect__num">09</span> git log</h2>
+  <p class="sect__lede">no roadmap. only commits. <span class="dim">$ git log --oneline --graph</span></p>
+  <ol class="commits" id="commits-list"></ol>
+</section>
+
+<!-- ══════════════════ 10 the tech ══════════════════ -->
 <section class="sect wrap reveal" id="stack">
-  <h2 class="sect__h"><span class="sect__num">08</span> the tech</h2>
+  <h2 class="sect__h"><span class="sect__num">10</span> the tech</h2>
   <p class="sect__lede">what's actually under the cat.</p>
 
   <div class="stack">
@@ -603,29 +601,22 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
     </div>
     <div class="stack__col">
       <h3 class="stack__h">data</h3>
-      <ul><li>dexscreener api</li><li>live price + mcap</li><li>client-side only</li><li>no backend</li></ul>
+      <ul><li>dexscreener api</li><li>live price + pools</li><li>client-side only</li><li>no backend</li></ul>
+    </div>
+    <div class="stack__col">
+      <h3 class="stack__h">render</h3>
+      <ul><li>canvas ascii rain</li><li>seeded sigil forge</li><li>css-only glow</li><li>no images</li></ul>
     </div>
     <div class="stack__col">
       <h3 class="stack__h">ritual</h3>
       <ul><li>vim</li><li>tmux</li><li>make</li><li>plain text</li></ul>
     </div>
   </div>
-
-  <div class="panel panel--bracket panel--wide">
-    <div class="panel__bar">~/cate/verify.sh</div>
-    <div class="panel__body">
-<pre class="code"><span class="c-com"># don't trust. verify. every claim on this page is checkable.</span>
-<span class="c-fn">spl-token</span> supply <span class="c-str">&lt;contract&gt;</span>          <span class="c-com"># 1,000,000,000</span>
-<span class="c-fn">spl-token</span> display <span class="c-str">&lt;contract&gt;</span>         <span class="c-com"># mint + freeze: null</span>
-<span class="c-fn">curl</span> api.dexscreener.com/latest/dex/tokens/<span class="c-str">&lt;contract&gt;</span>
-</pre>
-    </div>
-  </div>
 </section>
 
-<!-- ══════════════════ 09 colony ══════════════════ -->
+<!-- ══════════════════ 11 colony ══════════════════ -->
 <section class="sect wrap reveal" id="colony">
-  <h2 class="sect__h"><span class="sect__num">09</span> the colony</h2>
+  <h2 class="sect__h"><span class="sect__num">11</span> the colony</h2>
   <p class="sect__lede">
     there is no team. there is a colony. it has no leader, no mod application,
     and no patience for people who type "wen".
@@ -663,10 +654,17 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
     </form>
 
     <div class="side-stack">
-      <div class="counter" id="counter">
+      <div class="counter">
         <span class="counter__label">colony size</span>
         <span class="counter__n" id="counter-n">0</span>
         <span class="counter__sub dim">signed manifests, this browser</span>
+      </div>
+
+      <div class="panel panel--bracket">
+        <div class="panel__bar">sect roll</div>
+        <div class="panel__body">
+          <ul class="roll" id="sect-roll"></ul>
+        </div>
       </div>
 
       <ul class="links">
@@ -675,53 +673,14 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
         <li><span class="bul">↗</span> <a href="#" rel="noopener">github</a></li>
         <li><span class="bul">↗</span> <a href="https://dexscreener.com/solana" rel="noopener" target="_blank">dexscreener</a></li>
       </ul>
-
-      <pre class="mini-art" aria-hidden="true">
-   ╔═══════════════════════╗
-   ║  ⛧  nine lives        ║
-   ║  ⛧  four spent        ║
-   ║  ⛧  five in the pool  ║
-   ╚═══════════════════════╝</pre>
     </div>
   </div>
 </section>
 
-<!-- ══════════════════ 10 faq ══════════════════ -->
+<!-- ══════════════════ 12 faq ══════════════════ -->
 <section class="sect wrap reveal" id="faq">
-  <h2 class="sect__h"><span class="sect__num">10</span> faq</h2>
-
-  <div class="faq">
-    <details>
-      <summary>is there a team?</summary>
-      <p>no. there is a colony. no team wallet, no team allocation, nobody to
-      ask for a refund.</p>
-    </details>
-    <details>
-      <summary>wen?</summary>
-      <p>now. it already launched. scroll up. the contract is on this page.</p>
-    </details>
-    <details>
-      <summary>why does the site look like a terminal?</summary>
-      <p>because it is one. press <kbd>/</kbd>. it reads live market data and
-      forges sigils without leaving the page.</p>
-    </details>
-    <details>
-      <summary>how do i know it isn't a rug?</summary>
-      <p>you don't take our word for it — you check. lp burned, mint and freeze
-      revoked, zero team supply. paste the contract into rugcheck and read it
-      yourself. that is the entire security model.</p>
-    </details>
-    <details>
-      <summary>what are the nine lives?</summary>
-      <p>the roadmap, in the only form cate accepts: things already done, one
-      thing burning in public, and sealed ones nobody gets to preview.</p>
-    </details>
-    <details>
-      <summary>can i contribute?</summary>
-      <p>bring code, art, ascii, lore, or nothing at all. sign a manifest in the
-      colony. the cat does not check credentials.</p>
-    </details>
-  </div>
+  <h2 class="sect__h"><span class="sect__num">12</span> faq</h2>
+  <div class="faq" id="faq-list"></div>
 </section>
 
 <!-- ══════════════════ disclaimer ══════════════════ -->
@@ -743,16 +702,34 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
 <!-- ══════════════════ footer ══════════════════ -->
 <footer class="foot">
   <div class="wrap foot__inner">
-    <p>⛧ <span id="year">2026</span> $CATE — hand-assembled, no trackers, no cookies, no consent theatre.</p>
-    <p class="dim">press <kbd>/</kbd> console · <kbd>t</kbd> palette · <kbd>g</kbd> dig a sigil</p>
+    <div>
+      <p>⛧ <span id="year">2026</span> $CATE — hand-assembled, no trackers, no cookies, no consent theatre.</p>
+      <p class="dim">press <kbd>/</kbd> console · <kbd>ctrl</kbd>+<kbd>k</kbd> palette · <kbd>t</kbd> theme · <kbd>g</kbd> dig</p>
+    </div>
+    <pre class="foot__art" aria-hidden="true">  /\_/\
+ ( o.o )
+  > ^ <</pre>
   </div>
 </footer>
+
+<!-- ══════════════════ command palette ══════════════════ -->
+<div class="cmdk" id="cmdk" hidden>
+  <div class="cmdk__scrim" id="cmdk-scrim"></div>
+  <div class="cmdk__box" role="dialog" aria-modal="true" aria-label="command palette">
+    <input id="cmdk-input" type="text" placeholder="jump to, or run…" autocomplete="off" spellcheck="false">
+    <ul class="cmdk__list" id="cmdk-list"></ul>
+    <div class="cmdk__foot dim">↑↓ move · ⏎ run · esc close</div>
+  </div>
+</div>
+
+<!-- ══════════════════ toasts ══════════════════ -->
+<div class="toasts" id="toasts" aria-live="polite"></div>
 
 <!-- ══════════════════ console ══════════════════ -->
 <div class="console" id="console" data-open="false">
   <button class="console__handle" id="console-handle" type="button" aria-expanded="false" aria-controls="console-body">
     <span class="prompt">&gt;_</span> console <span class="dim">/</span>
-    <span class="console__hint dim" id="console-hint">try `price`, `dig`, `lives`</span>
+    <span class="console__hint dim" id="console-hint">try `price`, `dig`, `lives`, `pools`</span>
   </button>
   <div class="console__body" id="console-body">
     <pre class="console__out" id="console-out" tabindex="0">type `help` for commands.</pre>
