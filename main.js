@@ -1,6 +1,9 @@
 /* ══════════════════════════════════════════════════════════
-   cate // den — behaviour
+   $CATE // den — behaviour
    vanilla, no dependencies, degrades to a readable page.
+
+   the contract address has ONE source of truth: the text inside
+   #ca-value in index.html. everything here reads it from the DOM.
    ══════════════════════════════════════════════════════════ */
 (() => {
   'use strict';
@@ -10,17 +13,29 @@
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  /* ── contract ──────────────────────────────────────── */
+  const CA = ($('#ca-value')?.textContent || '').trim();
+
+  // a real solana mint is base58, 32-44 chars. the shipped placeholder
+  // deliberately contains characters that fail this test.
+  const CA_IS_REAL = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(CA) && !/p1aceho/i.test(CA);
+
+  const DEX_API   = 'https://api.dexscreener.com/latest/dex/tokens/';
+  const DEX_PAGE  = 'https://dexscreener.com/solana/';
+  const PUMP_PAGE = 'https://pump.fun/coin/';
+
   /* ── boot sequence ─────────────────────────────────── */
   const BOOT_LINES = [
     'den bios v4.3.1 — 0x43415445',
     'checking memory ........... 65536k ok',
     'mounting /dev/bone ........ ok',
-    'loading assembler ......... ok',
-    'verifying signatures ...... 6/6 ok',
+    'loading cate.elf .......... ok',
+    'spl-token authority ....... revoked',
+    'liquidity pool ............ burned',
     'entropy pool .............. warm',
     'no telemetry module found. good.',
     '',
-    '  ⛧ welcome to the den ⛧',
+    '  ⛧ the cat compiles ⛧',
     '',
   ];
 
@@ -30,7 +45,6 @@
     const skip = $('#boot-skip');
     if (!el) return;
 
-    // only the first visit per tab gets the ceremony
     const seen = sessionStorage.getItem('den:booted') === '1';
     let done = false;
 
@@ -50,27 +64,27 @@
 
     if (seen || reduced) { finish(); return; }
 
-    document.addEventListener('keydown', finish, { once: false });
+    document.addEventListener('keydown', finish);
     skip?.addEventListener('click', finish);
     el.addEventListener('click', finish);
 
     for (const line of BOOT_LINES) {
       if (done) return;
       log.textContent += line + '\n';
-      await sleep(line === '' ? 90 : 150);
+      await sleep(line === '' ? 90 : 145);
     }
-    await sleep(320);
+    await sleep(300);
     finish();
   }
 
   /* ── hero typewriter ───────────────────────────────── */
   const PHRASES = [
     'whoami',
-    'cat manifest.txt',
-    'make things that outlive the platform',
-    './assemble --from scratch',
-    'rm -rf ./frameworks',
-    'echo "i am my own assembler"',
+    'cat README.md',
+    'git commit -m "nine lives"',
+    'spl-token display $CATE',
+    './cate --no-roadmap --only-commits',
+    'echo "compiled, not minted"',
   ];
 
   let typerRunning = false;
@@ -83,8 +97,7 @@
     if (reduced) { out.textContent = PHRASES[0]; return; }
 
     let i = 0;
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
+    for (;;) {
       const phrase = PHRASES[i % PHRASES.length];
       for (let c = 1; c <= phrase.length; c++) {
         out.textContent = phrase.slice(0, c);
@@ -100,27 +113,142 @@
     }
   }
 
-  /* ── clock + uptime ────────────────────────────────── */
-  function chrono() {
-    const clock  = $('#clock');
-    const uptime = $('#uptime');
-    const t0 = Date.now();
+  /* ── copy the contract ─────────────────────────────── */
+  async function copyCA() {
+    const btn = $('#ca-copy');
+    const box = $('#ca');
+    if (!btn) return false;
 
-    const pad = (n) => String(n).padStart(2, '0');
+    let ok = false;
+    try {
+      await navigator.clipboard.writeText(CA);
+      ok = true;
+    } catch {
+      // clipboard API needs a secure context — fall back to selection
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = CA;
+        ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;top:-1000px;opacity:0';
+        document.body.appendChild(ta);
+        ta.select();
+        ok = document.execCommand('copy');
+        ta.remove();
+      } catch { ok = false; }
+    }
 
-    const tick = () => {
-      const now = new Date();
-      if (clock) clock.textContent =
-        `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    btn.textContent = ok ? '[ copied ]' : '[ select it ]';
+    btn.dataset.done = String(ok);
+    box?.classList.add('is-flash');
+    setTimeout(() => {
+      btn.textContent = '[ copy ]';
+      btn.dataset.done = 'false';
+      box?.classList.remove('is-flash');
+    }, 1800);
+    return ok;
+  }
 
-      if (uptime) {
-        const s = Math.floor((Date.now() - t0) / 1000);
-        uptime.textContent = `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`;
+  function initCA() {
+    $('#ca-copy')?.addEventListener('click', copyCA);
+
+    // point the buy/chart links at the real token once a real CA is in
+    if (CA_IS_REAL) {
+      const chart = $('#chart-link');
+      const buy   = $('#buy-link');
+      if (chart) chart.href = DEX_PAGE + CA;
+      if (buy)   buy.href   = PUMP_PAGE + CA;
+      $$('a[href="https://dexscreener.com/solana"]').forEach((a) => { a.href = DEX_PAGE + CA; });
+      $$('a[href="https://pump.fun"]').forEach((a) => { a.href = PUMP_PAGE + CA; });
+      $$('a[href="https://rugcheck.xyz"]').forEach((a) => { a.href = `https://rugcheck.xyz/tokens/${CA}`; });
+    }
+
+    // "copy button up top" shortcut inside the how-to-buy steps
+    $$('[data-scroll]').forEach((b) => b.addEventListener('click', () => {
+      const t = $(b.dataset.scroll);
+      t?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' });
+      t?.classList.add('is-flash');
+      setTimeout(() => t?.classList.remove('is-flash'), 1200);
+    }));
+  }
+
+  /* ── live market data (dexscreener, no key, no backend) ─ */
+  const fmtUsd = (n) => {
+    if (!isFinite(n) || n <= 0) return '—';
+    if (n >= 1)    return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    if (n >= 0.01) return '$' + n.toFixed(4);
+    // memecoin territory: toPrecision would render "$1.23e-9". spell it out.
+    const s = n.toFixed(15).replace(/0+$/, '');
+    return '$' + (s.endsWith('.') ? s + '0' : s);
+  };
+
+  const fmtBig = (n) => {
+    if (!isFinite(n) || n <= 0) return '—';
+    const units = [[1e9, 'B'], [1e6, 'M'], [1e3, 'K']];
+    for (const [size, suffix] of units) {
+      if (n >= size) return '$' + (n / size).toFixed(2) + suffix;
+    }
+    return '$' + n.toFixed(0);
+  };
+
+  let lastStats = null;
+
+  async function pullStats() {
+    const box  = $('#metrics');
+    const note = $('#metrics-note');
+    if (!box) return;
+
+    if (!CA_IS_REAL) {
+      box.dataset.state = 'idle';
+      if (note) note.textContent =
+        'live feed idle — drop a real contract address into #ca-value and this wakes up.';
+      return;
+    }
+
+    try {
+      const res = await fetch(DEX_API + CA, { headers: { accept: 'application/json' } });
+      if (!res.ok) throw new Error('http ' + res.status);
+      const json = await res.json();
+
+      // pick the deepest pool — that's the one people actually trade
+      const pair = (json.pairs || [])
+        .slice()
+        .sort((a, b) => (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0))[0];
+
+      if (!pair) throw new Error('no pairs yet');
+
+      const price  = parseFloat(pair.priceUsd);
+      const change = parseFloat(pair.priceChange?.h24);
+
+      $('#m-price').textContent = fmtUsd(price);
+      $('#m-mcap').textContent  = fmtBig(pair.marketCap || pair.fdv);
+      $('#m-liq').textContent   = fmtBig(pair.liquidity?.usd);
+      $('#m-vol').textContent   = fmtBig(pair.volume?.h24);
+
+      const chg = $('#m-change');
+      if (isFinite(change)) {
+        chg.textContent = (change >= 0 ? '+' : '') + change.toFixed(2) + '%';
+        chg.classList.toggle('up', change >= 0);
+        chg.classList.toggle('down', change < 0);
+      } else {
+        chg.textContent = '—';
       }
-    };
-    tick();
-    setInterval(tick, 1000);
 
+      box.dataset.state = 'live';
+      if (note) note.textContent = `live · ${pair.dexId} · updated ${new Date().toLocaleTimeString()}`;
+      lastStats = { price, change, mcap: pair.marketCap || pair.fdv, liq: pair.liquidity?.usd, dex: pair.dexId };
+    } catch (err) {
+      box.dataset.state = 'idle';
+      if (note) note.textContent = `live feed unavailable (${err.message}) — the chart link still works.`;
+    }
+  }
+
+  function initStats() {
+    pullStats();
+    if (CA_IS_REAL) setInterval(pullStats, 60000);
+  }
+
+  /* ── clock ─────────────────────────────────────────── */
+  function chrono() {
     const year = $('#year');
     if (year) year.textContent = new Date().getFullYear();
   }
@@ -141,7 +269,6 @@
     let saved = null;
     try { saved = localStorage.getItem('den:theme'); } catch { /* ignore */ }
     setTheme(saved && THEMES.includes(saved) ? saved : 'green');
-
     $('#theme-btn')?.addEventListener('click', cycleTheme);
   }
 
@@ -161,7 +288,6 @@
       toggle.setAttribute('aria-expanded', String(!open));
     });
 
-    // close the drawer after tapping a link
     $$('#nav a').forEach((a) => a.addEventListener('click', () => {
       if (nav) nav.dataset.open = 'false';
       toggle?.setAttribute('aria-expanded', 'false');
@@ -202,46 +328,16 @@
     items.forEach((el) => io.observe(el));
   }
 
-  /* ── contact form (no backend — hands off to mail) ─── */
-  function initForm() {
-    const form = $('#contact-form');
-    const note = $('#form-note');
-    if (!form) return;
-
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const data = new FormData(form);
-      const name = (data.get('name') || '').toString().trim();
-      const mail = (data.get('email') || '').toString().trim();
-      const body = (data.get('message') || '').toString().trim();
-
-      const fail = (msg) => {
-        note.dataset.err = 'true';
-        note.textContent = `✗ ${msg}`;
-      };
-
-      if (!name || !mail || !body) return fail('all three fields, please.');
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return fail('that return address won\'t route.');
-
-      note.dataset.err = 'false';
-      note.textContent = '✓ transmission queued — your mail client is opening.';
-
-      const subject = encodeURIComponent(`transmission from ${name}`);
-      const text = encodeURIComponent(`${body}\n\n— ${name} <${mail}>`);
-      window.location.href = `mailto:cate@example.com?subject=${subject}&body=${text}`;
-      form.reset();
-    });
-  }
-
   /* ── console ───────────────────────────────────────── */
-  const SECTIONS = ['manifest', 'works', 'stack', 'log', 'transmit'];
+  const SECTIONS = ['readme', 'tokenomics', 'buy', 'commits', 'stack', 'community'];
 
   const FILES = {
-    'manifest.txt':
-      'i write software the way other people carve things — slowly, by hand,\n' +
-      'until the shape stops arguing.',
-    'readme.md':
-      'this site is four files and no build step. view-source is the docs.',
+    'README.md':
+      'cate was not minted. she was compiled — assembled out of dead repos,\n' +
+      'abandoned branches, and code people delete at 4am.',
+    'cate.config.toml':
+      'supply = 1_000_000_000   tax = 0/0\n' +
+      'mint = revoked   freeze = revoked   lp = burned',
     'secrets.txt':
       'permission denied. (nice try.)',
   };
@@ -273,29 +369,75 @@
     const COMMANDS = {
       help: () => write(
         'commands:\n' +
-        '  help              this\n' +
+        '  ca                print the contract address\n' +
+        '  copy              copy the contract to clipboard\n' +
+        '  price             live price / mcap / 24h\n' +
+        '  buy               where to swap\n' +
+        '  chart             open the chart\n' +
+        '  tokenomics        supply, tax, authorities\n' +
+        '  verify            how to check every claim yourself\n' +
         '  whoami            who is cate\n' +
-        '  ls                list sections\n' +
+        '  ls                list sections    (ls -a for files)\n' +
         '  cd <section>      scroll to a section\n' +
-        '  cat <file>        read a file (try `ls -a`)\n' +
+        '  cat <file>        read a file\n' +
         '  theme [name]      green | amber | blood | bone\n' +
         '  neofetch          system info\n' +
-        '  date              current time\n' +
-        '  echo <text>       say it back\n' +
         '  clear             wipe the buffer\n' +
         '  exit              close the console'
       ),
 
+      ca: () => write(CA + (CA_IS_REAL ? '' : '\n(placeholder — not a live contract yet)')),
+
+      copy: async () => write(await copyCA() ? 'contract copied to clipboard.' : 'copy blocked — select it manually.'),
+
+      price: () => {
+        if (!CA_IS_REAL) { write('no contract wired up yet. check back at launch.'); return; }
+        if (!lastStats)  { write('no market data yet — the pool may not exist. try `chart`.'); return; }
+        const s = lastStats;
+        write(
+          `price   ${fmtUsd(s.price)}\n` +
+          `mcap    ${fmtBig(s.mcap)}\n` +
+          `24h     ${isFinite(s.change) ? (s.change >= 0 ? '+' : '') + s.change.toFixed(2) + '%' : '—'}\n` +
+          `liq     ${fmtBig(s.liq)}\n` +
+          `dex     ${s.dex}`
+        );
+      },
+
+      buy: () => {
+        write('pump.fun · jupiter · raydium — paste the contract, set slippage, confirm.');
+        document.getElementById('buy')?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' });
+      },
+
+      chart: () => {
+        const url = CA_IS_REAL ? DEX_PAGE + CA : 'https://dexscreener.com/solana';
+        write('opening ' + url);
+        window.open(url, '_blank', 'noopener');
+      },
+
+      tokenomics: () => write(
+        'supply    1,000,000,000\n' +
+        'tax       0 / 0\n' +
+        'mint      revoked\n' +
+        'freeze    revoked\n' +
+        'lp        burned\n' +
+        'team      0%'
+      ),
+
+      verify: () => write(
+        "don't trust. verify:\n" +
+        '  spl-token supply <contract>\n' +
+        '  spl-token display <contract>\n' +
+        '  rugcheck.xyz/tokens/<contract>'
+      ),
+
       whoami: () => write(
-        'cate — builder, assembler, occasional arsonist of legacy code.\n' +
-        'operates the den. answers to signal, not to notifications.'
+        'cate — cybernetic autonomous terminal entity.\n' +
+        'compiled, not minted. nine lives, four spent.\n' +
+        'does not have a roadmap. has a commit history.'
       ),
 
       ls: (args) => {
-        if (args[0] === '-a') {
-          write(Object.keys(FILES).join('  '));
-          return;
-        }
+        if (args[0] === '-a') { write(Object.keys(FILES).join('  ')); return; }
         write(SECTIONS.map((s) => s + '/').join('  '));
       },
 
@@ -325,13 +467,13 @@
       },
 
       neofetch: () => write(
-        '  ▄▄▄▄   cate@den\n' +
-        ' █▓▓▓▓█  ─────────\n' +
-        ' █░▄▄░█  os      den/linux\n' +
-        ' █░▀▀░█  shell   handmade\n' +
-        '  ▀██▀   deps    0\n' +
-        '         build   none\n' +
-        '         files   4\n' +
+        '  ▄▄▄▄   $CATE@den\n' +
+        ' █▓▓▓▓█  ──────────\n' +
+        ' █░▄▄░█  chain   solana\n' +
+        ' █░▀▀░█  supply  1,000,000,000\n' +
+        '  ▀██▀   tax     0/0\n' +
+        '         lp      burned\n' +
+        '         deps    0\n' +
         '         theme   ' + (document.documentElement.dataset.theme || 'green')
       ),
 
@@ -341,6 +483,8 @@
       exit:  () => { setOpen(false); },
       sudo:  () => write('cate is not in the sudoers file. this incident has been logged. ⛧'),
       rm:    () => write('nice try.'),
+      wen:   () => write('now. it already launched. scroll up.'),
+      moon:  () => write('the cat does not do price predictions. the cat does commits.'),
     };
 
     form.addEventListener('submit', (e) => {
@@ -398,7 +542,8 @@
   initTheme();
   initNav();
   initReveal();
-  initForm();
+  initCA();
+  initStats();
   initConsole();
   chrono();
   boot();
