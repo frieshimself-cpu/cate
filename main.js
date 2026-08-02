@@ -627,16 +627,22 @@
       const buys   = pair.txns?.h24?.buys || 0;
       const sells  = pair.txns?.h24?.sells || 0;
 
+      // the pump.fun bonding curve reports no liquidity figure at all.
+      // a bare "—" next to populated fields reads as a broken panel, so
+      // name the reason instead.
+      const onCurve = !DEX_POOLS.test(pair.dexId || '');
+      const liqText = isFinite(liq) && liq > 0 ? fmtBig(liq) : (onCurve ? 'on curve' : '—');
+
       $('#m-price').textContent = fmtUsd(price);
       $('#m-mcap').textContent  = fmtBig(mcap);
-      $('#m-liq').textContent   = fmtBig(liq);
+      $('#m-liq').textContent   = liqText;
       $('#m-vol').textContent   = fmtBig(vol);
       $('#m-txns').textContent  = (buys + sells) ? (buys + sells).toLocaleString('en-US') : '—';
       paintChange($('#m-change'), change);
 
       $('#s-price').textContent = fmtUsd(price);
       $('#s-mcap').textContent  = fmtBig(mcap);
-      $('#s-liq').textContent   = fmtBig(liq);
+      $('#s-liq').textContent   = liqText;
       $('#s-vol').textContent   = fmtBig(vol);
       $('#s-status').textContent = 'live';
       paintChange($('#s-change'), change);
