@@ -11,3 +11,8 @@ Thumbs.db
 # there is no build step — but keep these out anyway
 node_modules/
 *.log
+
+# scratch: raw API/RPC dumps from local testing
+real*.json
+rpc*.json
+*dex.json
