@@ -1,39 +1,78 @@
-# $CATE // the cat that compiles
+# /prompt/cate — the cat that compiles
 
-Launch site for **$CATE** — a Solana memecoin with a coding/terminal identity,
-built in the imfebu.com vein: dark, ember-orange, ASCII, CRT, occult.
+Launch site for **CATE**, a pump.fun / Solana memecoin with a coding-terminal
+identity, built in the imfebu.com vein: dark, ember-orange, ASCII, CRT, occult.
 
 No framework, no build step, no dependencies, no trackers, no backend. Open
 `index.html` and it works.
 
 ```
-index.html    markup, copy, and the contract address
+config.js     ← the only file you edit at launch
+index.html    markup and copy
 styles.css    tokens, layout, atmosphere, responsive rules
-main.js       every system below — rain, cat, market, forge, console…
+main.js       every system below — cat, market, chain, forge, console…
 vercel.json   headers (CSP + security + caching), clean URLs
 og.png        1200×630 share card
 robots.txt    crawl policy
 ```
 
-## ⚠ Before you launch — the one thing you must change
+## 🚀 Launching with your pump.fun coin
 
-The contract address is a **placeholder**. It lives in exactly one place:
+**One line.** Open `config.js`, paste the mint, deploy:
 
-```html
-<!-- index.html -->
-<code class="ca__value" id="ca-value">CATEp1acehoLderpLacehoLderpLacehoLderpump</code>
+```js
+window.CATE_CONFIG = {
+  contract: '6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN',   // ← your mint
+  rpc: 'https://api.mainnet-beta.solana.com',
+  socials: { x: 'https://x.com/…', telegram: '…', github: '…' },
+};
 ```
 
-Paste your real mint there and everything downstream wires itself up:
+That single value drives **everything**: the contract display and copy button,
+the live DexScreener feed, the on-chain verifier, the pools table, the raid-kit
+posts, the share card, and every chart / pump.fun / rugcheck / solscan link.
+Nothing else needs editing.
 
-- the copy button copies it
-- the live price feed and the header strip start polling
-- the chart / pump.fun / rugcheck links rewrite themselves to point at your token
+### Before you have a mint
 
-`main.js` reads that element as the single source of truth — there is no second
-copy to keep in sync. It validates the string as base58, 32–44 chars; the shipped
-placeholder deliberately fails that test, which is why the feed sits idle until
-you replace it.
+Leave `contract: ''`. The site runs in **pre-launch mode** — the contract row
+says "not launched", the copy button hides, and every live panel shows an honest
+"no contract yet" state instead of faking data. The warning line even reads
+*"anyone posting an address for this token right now is lying."*
+
+### Testing an address without committing it
+
+While `contract` is empty you can preview any mint with `?ca=<address>`. A loud
+red banner marks it as unofficial.
+
+> **Once `contract` is set in `config.js`, `?ca=` is ignored entirely.** That is
+> deliberate: otherwise anyone could send your holders a
+> `yoursite.com/?ca=<scam>` link and the page would render a scam address inside
+> your own branding. Verified: with a contract configured, the override is
+> dropped and no banner appears.
+
+### What works on a fresh pump.fun launch
+
+- **Token-2022 mints are handled.** New pump.fun tokens are Token-2022, not
+  classic SPL — the verifier detects and labels both.
+- **Bonding curve before graduation.** A brand-new mint has no DexScreener pool
+  for a while. Instead of erroring, the market panel says *"contract is live but
+  dexscreener has not indexed a pool yet — normal for a fresh pump.fun mint"* and
+  the status reads `bonding curve`.
+- **`pump.fun` badge** appears automatically next to the contract when the mint
+  ends in `pump`.
+
+### About the RPC
+
+`getAccountInfo` works fine on the free public endpoint. **`getTokenLargestAccounts`
+does not** — `api.mainnet-beta.solana.com` returns
+`429 Too many requests for a specific RPC call` for that method, so the top-holders
+panel will show a "set a dedicated endpoint" message with a Solscan fallback link
+for most visitors. Drop in Helius / QuickNode / Triton in `config.js` and it
+lights up.
+
+> ⚠ If you change `rpc`, add the new origin to `connect-src` in `vercel.json`
+> or the browser will block the request.
 
 ## Running it
 
@@ -64,8 +103,8 @@ vercel --prod   # production
 - **Security headers** — `X-Content-Type-Options`, `Referrer-Policy`,
   `X-Frame-Options: DENY`, `Permissions-Policy`, HSTS
 - **A strict CSP** — `default-src 'self'`, no `unsafe-inline` scripts,
-  `object-src 'none'`, `frame-ancestors 'none'`. `connect-src` allows exactly one
-  external origin: `https://api.dexscreener.com`.
+  `object-src 'none'`, `frame-ancestors 'none'`. `connect-src` allows exactly two
+  external origins: `api.dexscreener.com` and `api.mainnet-beta.solana.com`.
 - **Cache-Control** — HTML/CSS/JS revalidate (so a contract-address fix goes live
   immediately); images are immutable for a year.
 
@@ -92,28 +131,48 @@ and `rsync` all work — they'll ignore `vercel.json`, so port the headers yours
 
 | # | Section | What's in it |
 | --- | --- | --- |
-| — | hero | ASCII wordmark, the cat, contract + copy, six live metrics |
+| — | hero | wordmark, the cat, contract + copy, six live metrics |
 | 00 | transmission | the "this is not a shrine" opener |
 | 01 | readme.md | lore + count-up stat tiles |
-| 02 | the nine lives | 9 cards: 4 spent, 1 burning, 4 sealed. Click to open |
-| 03 | tokenomics | tabbed: `cate.config.toml` / `verify.sh` / `risks.md` |
-| 04 | market | live chart, buy/sell pressure, timeframes, every pool |
-| 05 | how to buy | five steps, wallet → swap |
-| 06 | lore wars | filterable threads that expand into arguments |
-| 07 | the litterbox | seeded sigil forge with PNG export + a curated wall |
-| 08 | the ledger | append-only record of the den |
-| 09 | git log | roadmap as a commit graph |
-| 10 | the tech | chain, site, data, render, ritual |
-| 11 | the colony | sect picker, manifest signing, live sect roll |
-| 12 | faq | eight answers |
+| 02 | the nine lives | 9 cards: 4 spent, 1 burning, 4 sealed |
+| 03 | tokenomics | tabbed config / verify.sh / risks.md |
+| 04 | market | live chart, buy/sell pressure, timeframes, price watch, every pool |
+| 05 | **on-chain** | **live RPC verification of mint/freeze/supply + top holders** |
+| 06 | how to buy | five steps, wallet → swap |
+| 07 | **raid kit** | **prewritten posts with the CA filled in + share-card generator** |
+| 08 | lore wars | filterable threads that expand into arguments |
+| 09 | the litterbox | seeded sigil forge with PNG export + a curated wall |
+| 10 | the ledger | append-only record of the den |
+| 11 | git log | roadmap as a commit graph |
+| 12 | the tech | chain, site, data, render, ritual |
+| 13 | the colony | sect picker, manifests, sect roll, achievements |
+| 14 | faq | eight answers |
 | — | disclaimer | not financial advice |
 
 ## The systems
 
-**The cat** — the ASCII skull in the hero blinks on her own schedule (with the
-occasional double-blink) and her pupils track your cursor. Pure text swapping in
-a `<pre>`, throttled to one rAF per mousemove. Static under
-`prefers-reduced-motion`.
+**The cat** — a chunky pixel cat (ears, whiskers, nose) generated on a grid so
+the symmetry is exact. She blinks on her own schedule, with occasional
+double-blinks, and her pupils track your cursor. Pure text swapping in a `<pre>`,
+throttled to one rAF per mousemove. Static under `prefers-reduced-motion`.
+
+**On-chain verifier** (`05`) — the safety claims are not asserted, they're
+*checked*, live, from the visitor's browser against a Solana JSON-RPC:
+mint authority, freeze authority, total supply, decimals and token program each
+get a real PASS/FAIL. The results feed back into the tokenomics checklist, so a
+claim that fails on-chain turns red there too. Claims that can't be verified
+on-chain (0% team, 0/0 tax) are marked `[·] asserted` rather than dressed up as
+verified.
+
+**Raid kit** (`07`) — five prewritten posts with the contract auto-filled, each
+with copy and post buttons, plus a **share-card generator** that renders a
+1200×630 PNG with the wordmark, the cat, your live price and your current sigil.
+
+**Achievements** — six unlockables tracked in `localStorage`, with a counter in
+the rail HUD.
+
+**Price watch** — arm a percentage in the market panel and get a toast when price
+moves that far. Tab-local, no notifications permission.
 
 **ASCII rain** — canvas behind everything, capped at ~18fps, pauses on tab hide,
 picks up the current palette accent.

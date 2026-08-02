@@ -20,15 +20,34 @@
     return n;
   };
 
-  /* ── contract ──────────────────────────────────────── */
-  const CA = ($('#ca-value')?.textContent || '').trim();
-  // a real solana mint is base58, 32-44 chars. the shipped placeholder
-  // deliberately contains characters that fail this test.
-  const CA_IS_REAL = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(CA) && !/p1aceho/i.test(CA);
+  /* ══ config + contract ════════════════════════════════
+     config.js is the single place a launcher edits. `?ca=` is
+     honoured ONLY while config.contract is empty, so once the real
+     mint ships nobody can craft a link that shows a different
+     address to your holders. */
+  const CFG = Object.assign({
+    name: '/prompt/cate', ticker: 'CATE', contract: '',
+    rpc: 'https://api.mainnet-beta.solana.com',
+    supply: 1000000000, socials: {},
+  }, window.CATE_CONFIG || {});
+
+  const isMint = (s) => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s || '');
+
+  let CA = (CFG.contract || '').trim();
+  let PREVIEW = false;
+  if (!isMint(CA)) {
+    const q = new URLSearchParams(location.search).get('ca');
+    if (isMint(q)) { CA = q.trim(); PREVIEW = true; }
+    else CA = '';
+  }
+  const CA_IS_REAL = isMint(CA);
+  const IS_PUMP = /pump$/i.test(CA);
 
   const DEX_API   = 'https://api.dexscreener.com/latest/dex/tokens/';
   const DEX_PAGE  = 'https://dexscreener.com/solana/';
   const PUMP_PAGE = 'https://pump.fun/coin/';
+  const SOLSCAN   = 'https://solscan.io/token/';
+  const RUGCHECK  = 'https://rugcheck.xyz/tokens/';
 
   /* ══ toasts ═══════════════════════════════════════════ */
   function toast(msg, kind = 'ok') {
@@ -109,16 +128,19 @@
 
   /* ══ the cat — blinks, and her pupils track the cursor ═ */
   const CAT = [
-    '        ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄',
-    '      ▄█░░░░░░░░░░░░░░░█▄',
-    '     █░░▄▄▄▄░░░░░░▄▄▄▄░░█',
-    '     █░░█%%█░░░░░░█%%█░░█',
-    '     █░░▀▀▀▀░░░░░░▀▀▀▀░░█',
-    '     █░░░░░░░░▄█▄░░░░░░░█',
-    '     ▀█░░░░░░▀███▀░░░░░█▀',
-    '       ▀█▄░▄█▄▄▄▄▄█▄░▄█▀',
-    '         ▀█ █ █ █ █ █▀',
-    '            ▀ ▀ ▀ ▀',
+    '       ▄                     ▄       ',
+    '      ▄█▄                   ▄█▄      ',
+    '     ▄█▓█▄                 ▄█▓█▄     ',
+    '    ██▓▓▓█▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄█▓▓▓██    ',
+    '    █░░░░░░░░░░░░░░░░░░░░░░░░░░░█    ',
+    '    █░░░▄▄▄▄░░░░░░░░░░░░░▄▄▄▄░░░█    ',
+    '    █░░░█%%█░░░░░░░░░░░░░█%%█░░░█    ',
+    '  ─ █░░░▀▀▀▀░░░░░░░░░░░░░▀▀▀▀░░░█ ─  ',
+    '─── █░░░░░░░░░░░░░▄░░░░░░░░░░░░░█ ───',
+    '  ─ █░░░░░░░░░░░░▀▄▀░░░░░░░░░░░░█ ─  ',
+    '    █░░░░░░░░░░░▀▄▀▄▀░░░░░░░░░░░█    ',
+    '    █░░░░░░░░░░░░░░░░░░░░░░░░░░░█    ',
+    '     ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀     ',
   ].join('\n');
 
   function initCat() {
@@ -302,20 +324,70 @@
       }, 1800);
     }
     toast(ok ? 'contract copied' : 'copy blocked — select it manually', ok ? 'ok' : 'err');
+    if (ok) unlock('copy');
     return ok;
   }
 
   function initCA() {
-    $('#ca-copy')?.addEventListener('click', copyCA);
+    const box = $('#ca');
+    const val = $('#ca-value');
 
     if (CA_IS_REAL) {
-      const chart = $('#chart-link');
-      const buy   = $('#buy-link');
-      if (chart) chart.href = DEX_PAGE + CA;
-      if (buy)   buy.href   = PUMP_PAGE + CA;
+      val.textContent = CA;
+      box.dataset.state = 'live';
+      if (IS_PUMP) {
+        const tag = el('span', 'ca__chain', 'pump.fun');
+        box.appendChild(tag);
+      }
+    } else {
+      val.textContent = 'not launched — paste the mint into config.js';
+      box.dataset.state = 'pre';
+      $('#ca-copy').hidden = true;
+      $('#ca-warn').textContent =
+        'no contract yet. anyone posting an address for this token right now is lying.';
+    }
+
+    if (PREVIEW) {
+      const bar = $('#preview-bar');
+      bar.hidden = false;
+      bar.textContent = '⚠ PREVIEW MODE — address supplied via ?ca= in the URL, not the official contract. do not trade on this.';
+    }
+
+    $('#ca-copy')?.addEventListener('click', copyCA);
+    $('#brand-ticker').textContent = '$' + CFG.ticker;
+
+    // every outbound link that depends on the mint
+    if (CA_IS_REAL) {
+      const set = (sel, href) => { const n = $(sel); if (n) n.href = href; };
+      set('#chart-link', DEX_PAGE + CA);
+      set('#buy-link',   PUMP_PAGE + CA);
+      set('#pump-link',  PUMP_PAGE + CA);
+      set('#solscan-link', SOLSCAN + CA);
       $$('a[href="https://dexscreener.com/solana"]').forEach((a) => { a.href = DEX_PAGE + CA; });
       $$('a[href="https://pump.fun"]').forEach((a) => { a.href = PUMP_PAGE + CA; });
-      $$('a[href="https://rugcheck.xyz"]').forEach((a) => { a.href = `https://rugcheck.xyz/tokens/${CA}`; });
+      $$('a[href="https://rugcheck.xyz"]').forEach((a) => { a.href = RUGCHECK + CA; });
+      $$('a[href="https://solscan.io"]').forEach((a) => { a.href = SOLSCAN + CA; });
+    }
+
+    // socials from config — hide the ones left empty
+    const box2 = $('#socials');
+    if (box2) {
+      const rows = [['x / twitter', CFG.socials?.x], ['telegram', CFG.socials?.telegram],
+                    ['github', CFG.socials?.github],
+                    ['dexscreener', CA_IS_REAL ? DEX_PAGE + CA : ''],
+                    ['solscan', CA_IS_REAL ? SOLSCAN + CA : '']];
+      rows.forEach(([label, href]) => {
+        if (!href) return;
+        const li = el('li');
+        const a = el('a', null, label);
+        a.href = href; a.rel = 'noopener'; a.target = '_blank';
+        li.innerHTML = '<span class="bul">↗</span> ';
+        li.appendChild(a);
+        box2.appendChild(li);
+      });
+      if (!box2.children.length) {
+        box2.appendChild(el('li', 'dim', 'socials go in config.js'));
+      }
     }
 
     $$('[data-scroll]').forEach((b) => b.addEventListener('click', () => {
@@ -437,11 +509,12 @@
   let lastStats = null;
   let lastPools = [];
 
-  function setIdle(note) {
+  function setIdle(note, status) {
     const box = $('#metrics'), strip = $('#strip');
     if (box) box.dataset.state = 'idle';
     if (strip) strip.dataset.state = 'idle';
-    const st = $('#s-status'); if (st) st.textContent = CA_IS_REAL ? 'offline' : 'pre-launch';
+    const st = $('#s-status');
+    if (st) st.textContent = status || (CA_IS_REAL ? 'offline' : 'pre-launch');
     const badge = $('#chart-badge'); if (badge) { badge.dataset.on = 'false'; badge.textContent = 'idle'; }
     const n = $('#metrics-note'); if (n) n.textContent = note;
   }
@@ -450,7 +523,7 @@
     if (!$('#metrics')) return;
 
     if (!CA_IS_REAL) {
-      setIdle('live feed idle — drop a real contract address into #ca-value and this wakes up.');
+      setIdle('pre-launch — paste the mint into config.js and every live panel wakes up.');
       return;
     }
 
@@ -464,7 +537,14 @@
         .slice()
         .sort((a, b) => (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0));
       const pair = pools[0];
-      if (!pair) throw new Error('no pairs yet');
+      if (!pair) {
+        setIdle(
+          IS_PUMP
+            ? 'contract is live but dexscreener has not indexed a pool yet — normal for a fresh pump.fun mint. trade on the bonding curve until it graduates.'
+            : 'contract is live but no pool exists yet.',
+          IS_PUMP ? 'bonding curve' : 'no pool');
+        return;
+      }
       lastPools = pools;
 
       const price  = parseFloat(pair.priceUsd);
@@ -523,6 +603,7 @@
       renderPools(pools);
 
       lastStats = { price, change, mcap, liq, vol, buys, sells, dex: pair.dexId, pools: pools.length };
+      checkWatch();
     } catch (err) {
       setIdle(`live feed unavailable (${err.message}) — the chart link still works.`);
     }
@@ -659,6 +740,8 @@
        'and the thread has spent 203 replies on that gap.']],
   ];
 
+  const openedThreads = new Set();
+
   function initLore() {
     const list = $('#threads');
     if (!list) return;
@@ -685,6 +768,8 @@
         const open = head.getAttribute('aria-expanded') === 'true';
         head.setAttribute('aria-expanded', String(!open));
         body.hidden = open;
+        openedThreads.add(id);
+        if (openedThreads.size >= THREADS.length) unlock('lore');
       });
 
       li.append(head, body);
@@ -857,8 +942,10 @@
     return { W: w, H: Math.max(7, Math.round(w * 0.52) | 1), dens: d };
   };
 
+  let digCount = 0;
   function renderSigil(seed) {
     currentSeed = seed >>> 0;
+    if (++digCount >= 10) unlock('dig');
     const { W, H, dens } = forgeOpts();
     const out = $('#forge-out');
     const tag = $('#forge-seed');
@@ -930,6 +1017,7 @@
         a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
         toast('png saved');
+        unlock('png');
       }, 'image/png');
     });
 
@@ -1053,6 +1141,7 @@
       writeColony(data);
       paintColony();
       toast('manifest signed · ' + sig);
+      unlock('sign');
       form.reset();
     });
 
@@ -1118,6 +1207,388 @@
     });
   }
 
+
+  /* ══ achievements ═════════════════════════════════════ */
+  const ACHIEVEMENTS = [
+    ['copy',   'copied the contract'],
+    ['dig',    'dug 10 sigils'],
+    ['png',    'exported a sigil'],
+    ['sign',   'signed a manifest'],
+    ['lore',   'opened every lore thread'],
+    ['konami', 'found the tenth life'],
+  ];
+
+  function readAch() {
+    try { return JSON.parse(localStorage.getItem('den:ach') || '{}') || {}; }
+    catch { return {}; }
+  }
+  function unlock(key) {
+    const got = readAch();
+    if (got[key]) return;
+    got[key] = 1;
+    try { localStorage.setItem('den:ach', JSON.stringify(got)); } catch { /* private */ }
+    const label = (ACHIEVEMENTS.find((a) => a[0] === key) || [, key])[1];
+    toast('⛧ unlocked — ' + label);
+    paintAch();
+  }
+  function paintAch() {
+    const got = readAch();
+    const n = ACHIEVEMENTS.filter((a) => got[a[0]]).length;
+    const hud = $('#hud-ach');
+    if (hud) hud.textContent = `${n}/${ACHIEVEMENTS.length}`;
+    const cnt = $('#ach-count');
+    if (cnt) cnt.textContent = `· ${n}/${ACHIEVEMENTS.length}`;
+    const list = $('#achs');
+    if (!list) return;
+    list.textContent = '';
+    ACHIEVEMENTS.forEach(([k, label]) => {
+      const li = el('li');
+      li.dataset.got = String(!!got[k]);
+      li.innerHTML = `<b>${label}</b>`;
+      list.appendChild(li);
+    });
+  }
+
+  /* ══ solana JSON-RPC — the on-chain verifier ══════════
+     runs from the visitor's browser against CFG.rpc. the public
+     endpoint is rate-limited; swap it in config.js for anything with
+     traffic (and add the new origin to connect-src in vercel.json). */
+  async function rpc(method, params) {
+    const res = await fetch(CFG.rpc, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+    });
+    if (!res.ok) throw new Error('rpc http ' + res.status);
+    const j = await res.json();
+    if (j.error) throw new Error(j.error.message || 'rpc error');
+    return j.result;
+  }
+
+  const TOKEN_PROGRAMS = {
+    'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA': 'spl-token',
+    'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb': 'token-2022',
+  };
+
+  let chainInfo = null;
+
+  function setCheck(key, value, ok) {
+    const li = $(`.verify li[data-check="${key}"]`);
+    if (li) {
+      li.dataset.ok = ok === null ? '' : String(ok);
+      $('.verify__v', li).textContent = value;
+      $('.verify__s', li).textContent = ok === null ? '?' : ok ? 'pass' : 'fail';
+    }
+    const claim = $(`#claim-checks li[data-claim="${key}"]`);
+    if (claim && ok !== null && claim.dataset.ok !== 'asserted') claim.dataset.ok = String(ok);
+  }
+
+  async function verifyChain() {
+    const badge = $('#chain-badge');
+    const note  = $('#verify-note');
+    if (!note) return;
+
+    if (!CA_IS_REAL) {
+      note.textContent = 'waiting for a contract address — nothing to verify yet.';
+      return;
+    }
+
+    note.textContent = 'querying ' + CFG.rpc.replace(/^https?:\/\//, '') + '…';
+    if (badge) { badge.textContent = 'querying'; badge.dataset.on = 'false'; }
+
+    try {
+      const info = await rpc('getAccountInfo', [CA, { encoding: 'jsonParsed' }]);
+      const parsed = info?.value?.data?.parsed?.info;
+      if (!parsed) throw new Error('not a token mint account');
+
+      const owner = info.value.owner;
+      const dec = parsed.decimals;
+      const supply = Number(parsed.supply) / Math.pow(10, dec);
+
+      setCheck('mint', parsed.mintAuthority || 'null (revoked)', !parsed.mintAuthority);
+      setCheck('freeze', parsed.freezeAuthority || 'null (revoked)', !parsed.freezeAuthority);
+      setCheck('supply', supply.toLocaleString('en-US'), true);
+      setCheck('decimals', String(dec), true);
+      setCheck('program', TOKEN_PROGRAMS[owner] || owner, !!TOKEN_PROGRAMS[owner]);
+
+      chainInfo = { supply, dec, mintAuthority: parsed.mintAuthority, freezeAuthority: parsed.freezeAuthority };
+      note.textContent = `read from chain · ${new Date().toLocaleTimeString()}`;
+      if (badge) { badge.textContent = 'verified'; badge.dataset.on = 'true'; }
+
+      // top holders
+      try {
+        const largest = await rpc('getTokenLargestAccounts', [CA]);
+        const rows = (largest?.value || []).slice(0, 10);
+        const box = $('#holders');
+        box.textContent = '';
+        if (!rows.length) {
+          box.appendChild(el('li', 'holders__empty dim', 'no holder accounts returned.'));
+        } else {
+          rows.forEach((h, i) => {
+            const amt = Number(h.uiAmountString ?? h.uiAmount ?? 0);
+            const pct = supply ? (amt / supply) * 100 : 0;
+            const li = el('li');
+            li.innerHTML =
+              `<span class="holders__top">` +
+              `<span class="holders__addr">${i + 1}. ${h.address.slice(0, 4)}…${h.address.slice(-4)}</span>` +
+              `<span class="holders__pct">${pct.toFixed(2)}%</span></span>` +
+              `<span class="holders__bar"><span style="width:${Math.min(100, pct)}%"></span></span>`;
+            box.appendChild(li);
+          });
+          const top10 = rows.reduce((n, h) => n + Number(h.uiAmountString ?? h.uiAmount ?? 0), 0);
+          $('#holders-note').textContent =
+            `· top 10 hold ${supply ? ((top10 / supply) * 100).toFixed(1) : '?'}%`;
+        }
+      } catch (e) {
+        // api.mainnet-beta.solana.com rate-limits getTokenLargestAccounts hard
+        // (429 "Too many requests for a specific RPC call"), so this is the
+        // normal path on the public endpoint rather than a real failure.
+        const box = $('#holders');
+        box.textContent = '';
+        const li = el('li', 'holders__empty dim');
+        li.innerHTML = /429|too many/i.test(e.message)
+          ? 'the public RPC blocks holder queries. set a dedicated endpoint in ' +
+            '<code>config.js</code>, or ' +
+            `<a href="${SOLSCAN}${CA}#holders" target="_blank" rel="noopener">read holders on solscan</a>.`
+          : 'holder query failed: ' + e.message;
+        box.appendChild(li);
+        $('#holders-note').textContent = '';
+      }
+    } catch (err) {
+      note.innerHTML =
+        `chain read failed (${err.message}). the public RPC is rate-limited — ` +
+        'set a dedicated endpoint in <code>config.js</code>, or ' +
+        `<a href="${SOLSCAN}${CA}" target="_blank" rel="noopener">verify on solscan</a>.`;
+      if (badge) { badge.textContent = 'offline'; badge.dataset.on = 'false'; }
+      ['mint', 'freeze', 'supply', 'decimals', 'program'].forEach((k) => setCheck(k, '—', null));
+    }
+  }
+
+  function initChain() {
+    $('#verify-again')?.addEventListener('click', () => {
+      toast('re-checking chain…');
+      verifyChain();
+    });
+    verifyChain();
+  }
+
+  /* ══ raid kit ═════════════════════════════════════════ */
+  function raidPosts() {
+    const ca = CA_IS_REAL ? CA : '<contract goes here>';
+    const site = location.origin === 'null' ? 'prompt-cate.xyz' : location.origin.replace(/^https?:\/\//, '');
+    const price = lastStats ? fmtUsd(lastStats.price) : '';
+    return [
+      ['the pitch',
+`every other coin ships a whitepaper.
+/prompt/cate ships a diff.
+
+nine lives. four spent. zero dependencies.
+compiled, not minted.
+
+${ca}`],
+      ['the tech',
+`the /prompt/cate site reads the chain from your own browser.
+
+· live dexscreener feed, no backend
+· mint + freeze authority verified against RPC on page load
+· seeded generative sigils
+· four files, no framework
+
+${site}`],
+      ['the short one',
+`compiled, not minted. ⛧
+
+CATE — ${ca}`],
+      ['the verify',
+`don't trust me, run it:
+
+spl-token display ${ca}
+
+mint authority: none
+freeze authority: none
+
+or just open the site — section 05 does it for you, live.`],
+      ['the price one',
+`CATE ${price ? '· ' + price + ' ' : ''}⛧
+
+no roadmap. only commits.
+${ca}`],
+    ];
+  }
+
+  function initRaid() {
+    const grid = $('#raid-grid');
+    if (!grid) return;
+
+    const paint = () => {
+      grid.textContent = '';
+      raidPosts().forEach(([title, text]) => {
+        const card = el('div', 'raid__item');
+        const head = el('div', 'raid__head');
+        head.textContent = title;
+        const body = el('pre', 'raid__text');
+        body.textContent = text;
+        const foot = el('div', 'raid__foot');
+        const copy = el('button', 'btn');
+        copy.type = 'button';
+        copy.textContent = '[ copy ]';
+        copy.addEventListener('click', async () => {
+          toast(await copyText(text) ? 'copied — go post it' : 'copy blocked', 'ok');
+        });
+        const post = el('a', 'btn', '[ post ]');
+        post.href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text);
+        post.target = '_blank'; post.rel = 'noopener';
+        foot.append(copy, post);
+        card.append(head, body, foot);
+        grid.appendChild(card);
+      });
+    };
+    paint();
+    // refresh so the price-bearing post picks up live data
+    setInterval(paint, 60000);
+  }
+
+  /* ══ share card ═══════════════════════════════════════ */
+  function drawCard(canvas) {
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const css = getComputedStyle(document.documentElement);
+    const accent = css.getPropertyValue('--accent').trim() || '#ff8a1f';
+
+    ctx.fillStyle = '#070504';
+    ctx.fillRect(0, 0, W, H);
+
+    const bloom = ctx.createRadialGradient(W / 2, -80, 40, W / 2, -80, W * 0.75);
+    bloom.addColorStop(0, accent + '44');
+    bloom.addColorStop(1, accent + '00');
+    ctx.fillStyle = bloom;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.strokeStyle = accent + '18';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += 48) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = 0; y < H; y += 48) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+    ctx.textBaseline = 'top';
+    ctx.shadowColor = accent;
+
+    // the cat, left
+    ctx.font = '17px ui-monospace, monospace';
+    ctx.fillStyle = accent;
+    ctx.shadowBlur = 10;
+    CAT.replace(/%%/g, '▓█').split('\n').forEach((row, i) => ctx.fillText(row, 54, 168 + i * 18));
+
+    // sigil, right
+    forgeSigil(currentSeed, 17, 9, 0.5).split('\n').forEach((row, i) =>
+      ctx.fillText(row, W - 300, 210 + i * 18));
+
+    // wordmark
+    ctx.shadowBlur = 22;
+    ctx.font = 'bold 30px ui-monospace, monospace';
+    ctx.fillStyle = '#8a7f75';
+    ctx.shadowBlur = 0;
+    ctx.fillText('/prompt/', 470, 108);
+    ctx.font = 'bold 92px ui-monospace, monospace';
+    ctx.fillStyle = accent;
+    ctx.shadowBlur = 26;
+    ctx.fillText('cate', 470, 140);
+
+    ctx.shadowBlur = 0;
+    ctx.font = '26px ui-monospace, monospace';
+    ctx.fillStyle = '#d6cec6';
+    ctx.fillText('the cat that compiles', 472, 258);
+
+    ctx.font = '19px ui-monospace, monospace';
+    ctx.fillStyle = '#8a7f75';
+    const bits = ['lp burned', 'mint revoked', '0/0 tax', 'nine lives'];
+    bits.forEach((b, i) => {
+      const x = 472 + (i % 2) * 200, y = 312 + ((i / 2) | 0) * 32;
+      ctx.fillStyle = accent;
+      ctx.fillText('⛧ ', x, y);
+      ctx.fillStyle = '#8a7f75';
+      ctx.fillText(b, x + 24, y);
+    });
+
+    if (lastStats) {
+      ctx.font = 'bold 34px ui-monospace, monospace';
+      ctx.fillStyle = accent;
+      ctx.shadowBlur = 14;
+      ctx.fillText(fmtUsd(lastStats.price), 472, 392);
+      ctx.shadowBlur = 0;
+      ctx.font = '19px ui-monospace, monospace';
+      ctx.fillStyle = lastStats.change >= 0 ? accent : '#ff4d5e';
+      ctx.fillText(fmtPct(lastStats.change) + ' 24h  ·  ' + fmtBig(lastStats.mcap) + ' mcap', 472, 436);
+    }
+
+    // contract footer
+    ctx.font = '17px ui-monospace, monospace';
+    ctx.fillStyle = '#574d45';
+    ctx.fillText(CA_IS_REAL ? CA : 'contract: see config.js', 54, H - 62);
+    ctx.fillStyle = accent;
+    ctx.fillText('SOLANA', W - 140, H - 62);
+  }
+
+  function initCard() {
+    const cv = $('#card-canvas');
+    const btn = $('#card-btn');
+    if (!cv || !btn) return;
+    drawCard(cv);
+    btn.addEventListener('click', () => {
+      drawCard(cv);
+      cv.toBlob((blob) => {
+        if (!blob) { toast('card export failed', 'err'); return; }
+        const url = URL.createObjectURL(blob);
+        const a = el('a');
+        a.href = url;
+        a.download = 'prompt-cate-card.png';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        toast('share card saved');
+      }, 'image/png');
+    });
+  }
+
+  /* ══ price watch ══════════════════════════════════════ */
+  let watch = null;
+
+  function initWatch() {
+    const btn = $('#watch-btn');
+    const note = $('#watch-note');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      if (watch) {
+        watch = null;
+        btn.textContent = '[ arm ]';
+        note.dataset.err = 'false';
+        note.textContent = 'disarmed.';
+        return;
+      }
+      if (!lastStats) {
+        note.dataset.err = 'true';
+        note.textContent = 'no price to watch yet.';
+        return;
+      }
+      const pct = clamp(parseFloat($('#watch-pct').value) || 10, 1, 90);
+      watch = { from: lastStats.price, pct };
+      btn.textContent = '[ disarm ]';
+      note.dataset.err = 'false';
+      note.textContent = `armed at ${fmtUsd(watch.from)} — toast on ±${pct}%.`;
+    });
+  }
+
+  function checkWatch() {
+    if (!watch || !lastStats) return;
+    const move = ((lastStats.price - watch.from) / watch.from) * 100;
+    if (Math.abs(move) < watch.pct) return;
+    toast(`price moved ${fmtPct(move)} from ${fmtUsd(watch.from)}`, move >= 0 ? 'ok' : 'err');
+    const note = $('#watch-note');
+    if (note) note.textContent = `fired at ${fmtUsd(lastStats.price)} (${fmtPct(move)}).`;
+    $('#watch-btn').textContent = '[ arm ]';
+    watch = null;
+  }
+
   /* ══ palette ══════════════════════════════════════════ */
   const THEMES = ['ember', 'acid', 'blood', 'bone', 'void'];
 
@@ -1144,8 +1615,9 @@
   }
 
   /* ══ nav + rail + scroll progress ═════════════════════ */
-  const SECTION_IDS = ['readme', 'lives', 'tokenomics', 'market', 'buy', 'lore',
-                       'litterbox', 'ledger', 'commits', 'stack', 'colony', 'faq'];
+  const SECTION_IDS = ['readme', 'lives', 'tokenomics', 'market', 'chain', 'buy',
+                       'raid', 'lore', 'litterbox', 'ledger', 'commits', 'stack',
+                       'colony', 'faq'];
 
   function initNav() {
     const nav    = $('#nav');
@@ -1263,6 +1735,10 @@
       { label: 'open console', kind: 'action', run: () => runCommand('help') },
       { label: 'live price', kind: 'action', run: () => runCommand('price') },
       { label: 'pools', kind: 'action', run: () => runCommand('pools') },
+      { label: 'verify on-chain', kind: 'action', run: () => runCommand('verify') },
+      { label: 'generate share card', kind: 'action', run: () => $('#card-btn')?.click() },
+      { label: 'open raid kit', kind: 'action', run: () => runCommand('raid') },
+      { label: 'achievements', kind: 'action', run: () => runCommand('ach') },
       { label: 'nine lives', kind: 'action', run: () => runCommand('lives') },
       ...THEMES.map((t) => ({ label: 'theme: ' + t, kind: 'theme', run: () => setTheme(t) })),
     ];
@@ -1369,7 +1845,11 @@
         'commands:\n' +
         '  ca / copy         print or copy the contract\n' +
         '  price             live price / mcap / 24h\n' +
-        '  pools             every pool holding $CATE\n' +
+        '  pools             every pool holding CATE\n' +
+        '  chain             on-chain mint facts\n' +
+        '  raid              copy-paste posts\n' +
+        '  card              render a share card\n' +
+        '  watch [pct]       toast me on a price move\n' +
         '  chart / buy       open the chart · how to buy\n' +
         '  tokenomics        supply, tax, authorities\n' +
         '  verify            check every claim yourself\n' +
@@ -1377,6 +1857,7 @@
         '  lore [status]     lore war threads\n' +
         '  ledger            the append-only record\n' +
         '  dig [seed]        forge a sigil here\n' +
+        '  ach               achievements\n' +
         '  png               export the current sigil\n' +
         '  whoami            who is cate\n' +
         '  ls / ls -a        sections · files\n' +
@@ -1387,7 +1868,35 @@
         '  clear / exit      wipe · close'
       ),
 
-      ca: () => write(CA + (CA_IS_REAL ? '' : '\n(placeholder — not a live contract yet)')),
+      ca: () => write(CA_IS_REAL
+        ? CA + (IS_PUMP ? '\n(pump.fun mint)' : '') + (PREVIEW ? '\n⚠ PREVIEW — from ?ca=, not official' : '')
+        : 'no contract yet. paste the mint into config.js.'),
+
+      chain: () => {
+        if (!CA_IS_REAL) { write('nothing to verify — no contract set.'); return; }
+        if (!chainInfo)  { write('chain not read yet. try `verify` or the re-check button.'); return; }
+        const c = chainInfo;
+        write(
+          `mint auth    ${c.mintAuthority || 'null (revoked)'}\n` +
+          `freeze auth  ${c.freezeAuthority || 'null (revoked)'}\n` +
+          `supply       ${c.supply.toLocaleString('en-US')}\n` +
+          `decimals     ${c.dec}\n` +
+          `rpc          ${CFG.rpc}`);
+      },
+
+      raid: () => {
+        write(raidPosts().map(([t]) => '  · ' + t).join('\n') + '\n\nopening the raid kit…');
+        document.getElementById('raid')?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' });
+      },
+
+      card: () => { $('#card-btn')?.click(); write('rendering share card…'); },
+
+      watch: (args) => {
+        const n = parseFloat(args[0]);
+        if (isFinite(n)) $('#watch-pct').value = String(clamp(n, 1, 90));
+        $('#watch-btn')?.click();
+        write($('#watch-note')?.textContent || 'watch toggled.');
+      },
       copy: async () => { await copyCA(); },
 
       price: () => {
@@ -1446,8 +1955,12 @@
       tokenomics: () => write(
         'supply    1,000,000,000\ntax       0 / 0\nmint      revoked\n' +
         'freeze    revoked\nlp        burned\nteam      0%'),
-      verify: () => write("don't trust. verify:\n" +
-        '  spl-token supply <contract>\n  spl-token display <contract>\n  rugcheck.xyz/tokens/<contract>'),
+      verify: () => {
+        write("don't trust. verify:\n" +
+          '  spl-token supply <contract>\n  spl-token display <contract>\n  rugcheck.xyz/tokens/<contract>\n\n' +
+          're-reading the chain now — see section 05.');
+        verifyChain();
+      },
       whoami: () => write(
         'cate — cybernetic autonomous terminal entity.\n' +
         'compiled, not minted. nine lives, four spent.\n' +
@@ -1476,7 +1989,7 @@
           : `theme: unknown palette: ${args[0]} (try: ${THEMES.join(', ')})`);
       },
       neofetch: () => write(
-        '  ▄▄▄▄   $CATE@den\n' +
+        '  ▄▄▄▄   cate@/prompt\n' +
         ' █▓▓▓▓█  ──────────\n' +
         ' █░▄▄░█  chain   solana\n' +
         ' █░▀▀░█  supply  1,000,000,000\n' +
@@ -1485,6 +1998,10 @@
         '         lives   5/9\n' +
         '         deps    0\n' +
         '         theme   ' + (document.documentElement.dataset.theme || 'ember')),
+      ach: () => {
+        const got = readAch();
+        write(ACHIEVEMENTS.map(([k, l]) => `  [${got[k] ? '✓' : ' '}] ${l}`).join('\n'));
+      },
       date:  () => write(new Date().toString()),
       echo:  (a) => write(a.join(' ')),
       clear: () => { out.textContent = ''; },
@@ -1572,6 +2089,7 @@
         out.scrollTop = out.scrollHeight;
       }
       toast('⛧ the tenth life ⛧');
+      unlock('konami');
     });
   }
 
@@ -1599,6 +2117,11 @@
   initTabs();
   initSpotlight();
   initStats();
+  initChain();
+  initRaid();
+  initCard();
+  initWatch();
+  paintAch();
   initCmdk();
   initConsole();
   initKonami();

@@ -3,22 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>$CATE // cybernetic autonomous terminal entity</title>
-<meta name="description" content="$CATE — the cat that compiles. nine lives, four spent. a terminal entity on solana. no roadmap, only commits.">
+<title>/prompt/cate — the cat that compiles</title>
+<meta name="description" content="/prompt/cate — the cat that compiles. nine lives, four spent. a terminal entity on solana. no roadmap, only commits.">
 <meta name="color-scheme" content="dark">
-<meta property="og:title" content="$CATE // the cat that compiles">
+<meta property="og:title" content="/prompt/cate — the cat that compiles">
 <meta property="og:description" content="cybernetic autonomous terminal entity. nine lives, four spent. lp burned, mint revoked, contract renounced.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="/og.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="/og.png">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23070504'/><text y='24' x='2' font-size='20' fill='%23ff8a1f' font-family='monospace'>$C</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23070504'/><text y='25' x='3' font-size='24' fill='%23ff8a1f' font-family='monospace'>/c</text></svg>">
 <link rel="stylesheet" href="styles.css">
 <!-- sets html.js before first paint so JS-only affordances never flash.
      NOTE: the CSP in vercel.json pins this script by sha256 hash. if you
      edit even one character, recompute it or the site will break in prod:
        printf "%s" '<script contents>' | openssl dgst -sha256 -binary | base64 -->
 <script>document.documentElement.className = 'js';</script>
+<script src="config.js"></script>
 </head>
 <body>
 
@@ -44,14 +45,15 @@
 
 <a class="skip-link" href="#main">skip to content</a>
 
+<!-- preview banner — only ever shown when a ?ca= override is active -->
+<div class="preview-bar" id="preview-bar" hidden></div>
+
 <!-- ══════════════════ header ══════════════════ -->
 <header class="head">
   <div class="wrap head__inner">
-    <a class="brand" href="#top" aria-label="$CATE — home">
-<pre class="brand__art" aria-hidden="true"> ▄▄▄▄▄  ▄▄▄  ▄▄▄▄▄▄ ▄▄▄▄▄
- █      █▄▄█   ██   █▄▄
- █▄▄▄▄  █  █   ██   █▄▄▄▄</pre>
-      <span class="brand__tag">$CATE</span>
+    <a class="brand" href="#top" aria-label="/prompt/cate — home">
+      <span class="brand__slash">/prompt/</span><span class="brand__name">cate</span>
+      <span class="brand__tag" id="brand-ticker">$CATE</span>
     </a>
 
     <button class="nav-toggle" id="nav-toggle" type="button" aria-expanded="false" aria-controls="nav">
@@ -63,9 +65,9 @@
       <a href="#lives"      data-key="2">lives</a>
       <a href="#tokenomics" data-key="3">coin</a>
       <a href="#market"     data-key="4">market</a>
-      <a href="#lore"       data-key="5">lore</a>
-      <a href="#litterbox"  data-key="6">litterbox</a>
-      <a href="#colony"     data-key="7">colony</a>
+      <a href="#chain"      data-key="5">chain</a>
+      <a href="#lore"       data-key="6">lore</a>
+      <a href="#litterbox"  data-key="7">litterbox</a>
       <button class="kbd-btn" id="palette-btn" type="button" title="command palette (ctrl+k)">
         <span aria-hidden="true">⌘</span>K
       </button>
@@ -89,7 +91,7 @@
 
   <div class="ticker" aria-hidden="true">
     <div class="ticker__track">
-      <span>⛧ $CATE ⛧ nine lives four spent ⛧ lp burned ⛧ mint revoked ⛧ contract renounced ⛧ the cat compiles ⛧ 0x43415445 ⛧ no roadmap only commits ⛧ ☠ ⛧ she reads the chain ⛧ she writes to it ⛧ ‡ ⛧ $CATE ⛧ nine lives four spent ⛧ lp burned ⛧ mint revoked ⛧ contract renounced ⛧ the cat compiles ⛧ 0x43415445 ⛧ no roadmap only commits ⛧ ☠ ⛧ she reads the chain ⛧ she writes to it ⛧ ‡ ⛧</span>
+      <span>⛧ /prompt/cate ⛧ nine lives four spent ⛧ lp burned ⛧ mint revoked ⛧ contract renounced ⛧ the cat compiles ⛧ 0x43415445 ⛧ no roadmap only commits ⛧ ☠ ⛧ she reads the chain ⛧ she writes to it ⛧ ‡ ⛧ /prompt/cate ⛧ nine lives four spent ⛧ lp burned ⛧ mint revoked ⛧ contract renounced ⛧ the cat compiles ⛧ 0x43415445 ⛧ no roadmap only commits ⛧ ☠ ⛧ she reads the chain ⛧ she writes to it ⛧ ‡ ⛧</span>
     </div>
   </div>
   <div class="scrollbar" id="scrollbar" aria-hidden="true"><span id="scrollbar-fill"></span></div>
@@ -102,6 +104,7 @@
     <span><i>sid</i><b id="hud-sid">—</b></span>
     <span><i>up</i><b id="hud-up">00:00</b></span>
     <span><i>pos</i><b id="hud-pos">0%</b></span>
+    <span><i>ach</i><b id="hud-ach">0/6</b></span>
   </div>
 </aside>
 
@@ -111,7 +114,8 @@
 <!-- ══════════════════ hero ══════════════════ -->
 <section class="hero">
   <div class="wrap hero__wrap">
-    <pre class="wordmark" aria-label="CATE">
+    <p class="hero__path"><span class="dim">/</span>prompt<span class="dim">/</span></p>
+    <pre class="wordmark" aria-label="cate">
  ██████╗ █████╗ ████████╗███████╗
 ██╔════╝██╔══██╗╚══██╔══╝██╔════╝
 ██║     ███████║   ██║   █████╗
@@ -126,13 +130,13 @@
     <h1 class="hero__title glitch" data-text="the cat that compiles">the cat that compiles</h1>
 
     <p class="hero__type">
-      <span class="prompt">cate@den</span><span class="dim">:</span><span class="path">~</span><span class="dim">$</span>
+      <span class="prompt">cate@den</span><span class="dim">:</span><span class="path">/prompt</span><span class="dim">$</span>
       <span id="typed"></span><span class="caret" aria-hidden="true">█</span>
     </p>
 
     <div class="hero__grid">
       <div class="hero__cat">
-        <pre class="sigil" id="cat" aria-label="ascii cat skull"></pre>
+        <pre class="sigil" id="cat" aria-label="pixel art cat"></pre>
         <span class="hero__cat-hint dim">she is watching the cursor</span>
       </div>
 
@@ -143,18 +147,18 @@
           roadmaps are promises with better typography — she has a commit history.
         </p>
 
-        <div class="ca" id="ca">
+        <div class="ca" id="ca" data-state="pre">
           <span class="ca__label">contract</span>
-          <code class="ca__value" id="ca-value">CATEp1acehoLderpLacehoLderpLacehoLderpump</code>
+          <code class="ca__value" id="ca-value">not launched — paste the mint into config.js</code>
           <button class="ca__copy" id="ca-copy" type="button" aria-label="copy contract address">[ copy ]</button>
         </div>
-        <p class="ca__warn">
-          ⚠ verify before you send. there is exactly one $CATE and it is the
+        <p class="ca__warn" id="ca-warn">
+          ⚠ verify before you send. there is exactly one CATE and it is the
           string above.
         </p>
 
         <div class="hero__cta">
-          <a class="btn btn--solid" href="#buy">[ buy $CATE ]</a>
+          <a class="btn btn--solid" href="#buy">[ buy CATE ]</a>
           <a class="btn" id="chart-link" href="https://dexscreener.com/solana" target="_blank" rel="noopener">[ chart ]</a>
           <button class="btn" data-console="price">[ console ]</button>
         </div>
@@ -169,7 +173,7 @@
       <div><dt>vol 24h</dt><dd id="m-vol">—</dd></div>
       <div><dt>txns 24h</dt><dd id="m-txns">—</dd></div>
     </dl>
-    <p class="metrics__note dim" id="metrics-note">live feed idle — awaiting a real contract address.</p>
+    <p class="metrics__note dim" id="metrics-note">pre-launch — no contract wired up yet.</p>
   </div>
 </section>
 
@@ -192,7 +196,7 @@
 
   <div class="grid grid--split">
     <div class="panel panel--bracket spot">
-      <div class="panel__bar">~/cate/README.md</div>
+      <div class="panel__bar">/prompt/cate/README.md</div>
       <div class="panel__body prose">
         <p>
           <span class="hl">cate</span> was assembled out of dead repos, abandoned
@@ -243,11 +247,9 @@
     nine lives. four spent, one burning, four sealed. click one to open it.
     <span class="dim">a life spent is not recoverable.</span>
   </p>
-
   <div class="lives" id="lives-grid"></div>
-
   <div class="life-out panel panel--bracket" id="life-out" hidden>
-    <div class="panel__bar" id="life-out-bar">~/cate/lives/</div>
+    <div class="panel__bar" id="life-out-bar">/prompt/cate/lives/</div>
     <div class="panel__body"><pre class="life-out__text" id="life-out-text"></pre></div>
   </div>
 </section>
@@ -268,9 +270,10 @@
         <div class="tabpane is-on" data-pane="toml">
 <pre class="code"><span class="c-com"># the whole thing. that's it. that's the tokenomics.</span>
 <span class="c-key">[token]</span>
-name     = <span class="c-str">"cate"</span>
+name     = <span class="c-str">"/prompt/cate"</span>
 symbol   = <span class="c-str">"CATE"</span>
 chain    = <span class="c-str">"solana"</span>
+launch   = <span class="c-str">"pump.fun"</span>
 decimals = <span class="c-num">6</span>
 supply   = <span class="c-num">1_000_000_000</span>
 
@@ -291,14 +294,14 @@ locked   = <span class="c-str">"forever"</span>
 team     = <span class="c-num">0</span>   <span class="c-com"># zero. read it again.</span>
 presale  = <span class="c-num">0</span>
 airdrop  = <span class="c-num">0</span>
-market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool at launch</span>
+market   = <span class="c-num">100</span> <span class="c-com"># 100% to the curve</span>
 </pre>
         </div>
         <div class="tabpane" data-pane="verify">
-<pre class="code"><span class="c-com"># don't trust. verify. every claim is checkable.</span>
-<span class="c-fn">spl-token</span> supply <span class="c-str">&lt;contract&gt;</span>
-<span class="c-com"># → 1000000000</span>
+<pre class="code"><span class="c-com"># don't trust. verify. section 05 does all of this live,</span>
+<span class="c-com"># in your browser, against a solana RPC.</span>
 
+<span class="c-fn">spl-token</span> supply <span class="c-str">&lt;contract&gt;</span>
 <span class="c-fn">spl-token</span> display <span class="c-str">&lt;contract&gt;</span>
 <span class="c-com"># → Mint Authority:   (none)</span>
 <span class="c-com"># → Freeze Authority: (none)</span>
@@ -316,8 +319,13 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
   the price can go to zero. memecoins usually do.
 
 <span class="c-key">liquidity risk</span>
-  lp is burned, so it cannot be pulled — but thin liquidity
-  still means slippage and a hard exit on the way out.
+  lp is burned, so it cannot be pulled — but thin
+  liquidity still means slippage and a hard exit.
+
+<span class="c-key">curve risk</span>
+  a pump.fun launch trades on a bonding curve until it
+  graduates. pre-graduation, depth is whatever the
+  curve says it is.
 
 <span class="c-key">key risk</span>
   authorities are revoked. nobody can mint or freeze.
@@ -333,27 +341,28 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
 
     <div class="spread">
       <h3 class="spread__h">distribution</h3>
-      <div class="bar" role="img" aria-label="100 percent of supply in the liquidity pool">
+      <div class="bar" role="img" aria-label="100 percent of supply to the market">
         <span class="bar__fill" style="width:100%"></span>
       </div>
       <ul class="spread__legend">
-        <li><span class="sw sw--a"></span> liquidity pool <b>100%</b></li>
+        <li><span class="sw sw--a"></span> market / curve <b>100%</b></li>
         <li><span class="sw sw--b"></span> team <b>0%</b></li>
         <li><span class="sw sw--b"></span> presale <b>0%</b></li>
       </ul>
 
       <h3 class="spread__h">safety checks</h3>
-      <ul class="checks">
-        <li class="pass">lp burned</li>
-        <li class="pass">mint revoked</li>
-        <li class="pass">freeze revoked</li>
-        <li class="pass">no team supply</li>
-        <li class="pass">0 / 0 tax</li>
+      <ul class="checks" id="claim-checks">
+        <li data-claim="mint">mint revoked</li>
+        <li data-claim="freeze">freeze revoked</li>
+        <li data-claim="supply">supply fixed</li>
+        <li data-claim="team" data-ok="asserted" title="asserted by the team, not checkable on-chain">no team supply</li>
+        <li data-claim="tax" data-ok="asserted" title="asserted by the team, not checkable on-chain">0 / 0 tax</li>
       </ul>
       <p class="dim spread__note">
-        don't take our word for it — paste the contract into
-        <a href="https://rugcheck.xyz" target="_blank" rel="noopener">rugcheck</a>
-        and read it yourself. that's the whole point.
+        the first three are checked <b class="hl">live against the chain</b> in
+        section <a href="#chain">05</a> — not asserted here. paste the contract
+        into <a href="https://rugcheck.xyz" target="_blank" rel="noopener">rugcheck</a>
+        too. that's the whole point.
       </p>
     </div>
   </div>
@@ -362,14 +371,12 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
 <!-- ══════════════════ 04 market ══════════════════ -->
 <section class="sect wrap reveal" id="market">
   <h2 class="sect__h"><span class="sect__num">04</span> market</h2>
-  <p class="sect__lede">
-    live, straight from dexscreener. no backend, no key, no middleman.
-  </p>
+  <p class="sect__lede">live, straight from dexscreener. no backend, no key, no middleman.</p>
 
   <div class="market">
     <div class="panel panel--bracket market__chart">
       <div class="panel__bar">
-        ~/cate/market/price
+        /prompt/cate/market/price
         <span class="market__badge" id="chart-badge">idle</span>
       </div>
       <div class="panel__body">
@@ -412,11 +419,26 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
           </ul>
         </div>
       </div>
+
+      <div class="panel panel--bracket">
+        <div class="panel__bar">watch</div>
+        <div class="panel__body">
+          <p class="dim" style="font-size:.8rem;margin-bottom:.6rem">
+            toast me when price moves this much from now. runs in this tab only.
+          </p>
+          <div class="watch">
+            <input id="watch-pct" type="number" min="1" max="90" step="1" value="10" aria-label="percent move">
+            <span class="dim">%</span>
+            <button class="btn" id="watch-btn" type="button">[ arm ]</button>
+          </div>
+          <p class="form__note" id="watch-note"></p>
+        </div>
+      </div>
     </div>
   </div>
 
   <div class="panel panel--bracket panel--wide">
-    <div class="panel__bar">every pool holding $CATE <span class="dim" id="pools-count"></span></div>
+    <div class="panel__bar">every pool holding CATE <span class="dim" id="pools-count"></span></div>
     <div class="panel__body">
       <div class="table-wrap">
         <table class="ptable">
@@ -424,7 +446,7 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
             <tr><th>dex</th><th>pair</th><th>price</th><th>liquidity</th><th>vol 24h</th><th>24h</th></tr>
           </thead>
           <tbody id="pools">
-            <tr class="ptable__empty"><td colspan="6">no pools — the feed wakes up when a real contract is wired in.</td></tr>
+            <tr class="ptable__empty"><td colspan="6">no pools yet — the feed wakes up when a contract is wired in.</td></tr>
           </tbody>
         </table>
       </div>
@@ -432,9 +454,49 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
   </div>
 </section>
 
-<!-- ══════════════════ 05 how to buy ══════════════════ -->
+<!-- ══════════════════ 05 on-chain ══════════════════ -->
+<section class="sect wrap reveal" id="chain">
+  <h2 class="sect__h"><span class="sect__num">05</span> on-chain</h2>
+  <p class="sect__lede">
+    the claims above, checked <b class="hl">live against a solana RPC</b> from
+    your own browser. we don't get to grade our own homework.
+  </p>
+
+  <div class="grid grid--split">
+    <div class="panel panel--bracket spot">
+      <div class="panel__bar">
+        rpc://mint
+        <span class="market__badge" id="chain-badge">idle</span>
+      </div>
+      <div class="panel__body">
+        <ul class="verify" id="verify-list">
+          <li data-check="mint"><span class="verify__k">mint authority</span><span class="verify__v">—</span><span class="verify__s">?</span></li>
+          <li data-check="freeze"><span class="verify__k">freeze authority</span><span class="verify__v">—</span><span class="verify__s">?</span></li>
+          <li data-check="supply"><span class="verify__k">total supply</span><span class="verify__v">—</span><span class="verify__s">?</span></li>
+          <li data-check="decimals"><span class="verify__k">decimals</span><span class="verify__v">—</span><span class="verify__s">?</span></li>
+          <li data-check="program"><span class="verify__k">token program</span><span class="verify__v">—</span><span class="verify__s">?</span></li>
+        </ul>
+        <p class="dim verify__note" id="verify-note">
+          waiting for a contract address.
+        </p>
+        <button class="btn" id="verify-again" type="button">[ re-check ]</button>
+      </div>
+    </div>
+
+    <div class="panel panel--bracket">
+      <div class="panel__bar">top holders <span class="dim" id="holders-note"></span></div>
+      <div class="panel__body">
+        <ul class="holders" id="holders">
+          <li class="holders__empty dim">no data yet.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ 06 how to buy ══════════════════ -->
 <section class="sect wrap reveal" id="buy">
-  <h2 class="sect__h"><span class="sect__num">05</span> how to buy</h2>
+  <h2 class="sect__h"><span class="sect__num">06</span> how to buy</h2>
   <p class="sect__lede">five commands. you've run worse.</p>
 
   <ol class="steps">
@@ -469,8 +531,8 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
       <div>
         <h3>swap</h3>
         <p>open <a id="buy-link" href="https://pump.fun" target="_blank" rel="noopener">pump.fun</a>
-        or <a href="https://jup.ag" target="_blank" rel="noopener">jupiter</a>,
-        paste the contract, set your slippage, confirm.</p>
+        (or <a href="https://jup.ag" target="_blank" rel="noopener">jupiter</a>
+        once it's graduated), paste the contract, set your slippage, confirm.</p>
       </div>
     </li>
     <li class="step">
@@ -483,17 +545,41 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
     </li>
   </ol>
 
-  <div class="buys">
-    <a class="btn btn--solid" href="https://pump.fun" target="_blank" rel="noopener">[ pump.fun ]</a>
+  <div class="buys" id="buy-links">
+    <a class="btn btn--solid" id="pump-link" href="https://pump.fun" target="_blank" rel="noopener">[ pump.fun ]</a>
     <a class="btn" href="https://jup.ag" target="_blank" rel="noopener">[ jupiter ]</a>
     <a class="btn" href="https://dexscreener.com/solana" target="_blank" rel="noopener">[ dexscreener ]</a>
     <a class="btn" href="https://rugcheck.xyz" target="_blank" rel="noopener">[ rugcheck ]</a>
+    <a class="btn" id="solscan-link" href="https://solscan.io" target="_blank" rel="noopener">[ solscan ]</a>
   </div>
 </section>
 
-<!-- ══════════════════ 06 lore wars ══════════════════ -->
+<!-- ══════════════════ 07 raid kit ══════════════════ -->
+<section class="sect wrap reveal" id="raid">
+  <h2 class="sect__h"><span class="sect__num">07</span> raid kit</h2>
+  <p class="sect__lede">
+    copy, paste, post. the contract is filled in automatically — and it is the
+    only address on this page.
+  </p>
+
+  <div class="raid" id="raid-grid"></div>
+
+  <div class="panel panel--bracket panel--wide">
+    <div class="panel__bar">share card</div>
+    <div class="panel__body raid__card">
+      <p class="dim">
+        renders a PNG with the wordmark, the cat, the live price and your current
+        sigil. drawn in your browser, downloaded straight to disk.
+      </p>
+      <button class="btn btn--solid" id="card-btn" type="button">[ generate share card ]</button>
+      <canvas id="card-canvas" class="raid__preview" width="1200" height="630" aria-label="share card preview"></canvas>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ 08 lore wars ══════════════════ -->
 <section class="sect wrap reveal" id="lore">
-  <h2 class="sect__h"><span class="sect__num">06</span> lore wars</h2>
+  <h2 class="sect__h"><span class="sect__num">08</span> lore wars</h2>
   <p class="sect__lede">
     contested threads. anyone can argue. nobody can delete.
     <span class="dim">status is enforced by the colony, not by a mod.</span>
@@ -512,9 +598,9 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
   <p class="threads__empty dim" id="threads-empty" hidden>no threads with that status.</p>
 </section>
 
-<!-- ══════════════════ 07 litterbox ══════════════════ -->
+<!-- ══════════════════ 09 litterbox ══════════════════ -->
 <section class="sect wrap reveal" id="litterbox">
-  <h2 class="sect__h"><span class="sect__num">07</span> the litterbox</h2>
+  <h2 class="sect__h"><span class="sect__num">09</span> the litterbox</h2>
   <p class="sect__lede">
     generative sigils, dug up rather than drawn. every one is deterministic —
     the seed <em>is</em> the artwork.
@@ -522,7 +608,7 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
 
   <div class="grid grid--split">
     <div class="panel panel--bracket forge">
-      <div class="panel__bar">~/cate/litterbox/forge.sh <span class="forge__seed" id="forge-seed">seed: —</span></div>
+      <div class="panel__bar">/prompt/cate/litterbox <span class="forge__seed" id="forge-seed">seed: —</span></div>
       <div class="panel__body">
         <pre class="forge__out" id="forge-out" aria-live="polite">press [ dig ] to unearth a sigil.</pre>
 
@@ -548,8 +634,8 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
           <button class="btn" id="forge-load" type="button">[ load ]</button>
         </div>
         <p class="dim forge__note">
-          same seed + same settings, same sigil, forever. paste a seed to summon
-          someone else's. <kbd>g</kbd> digs from anywhere.
+          same seed + same settings, same sigil, forever. <kbd>g</kbd> digs from
+          anywhere.
         </p>
       </div>
     </div>
@@ -562,14 +648,13 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
   </div>
 </section>
 
-<!-- ══════════════════ 08 ledger ══════════════════ -->
+<!-- ══════════════════ 10 ledger ══════════════════ -->
 <section class="sect wrap reveal" id="ledger">
-  <h2 class="sect__h"><span class="sect__num">08</span> the ledger</h2>
+  <h2 class="sect__h"><span class="sect__num">10</span> the ledger</h2>
   <p class="sect__lede">
     append-only record of everything the den has done.
-    <span class="dim">authored history, not a chain read — verify anything on-chain yourself.</span>
+    <span class="dim">authored history, not a chain read — section 05 is the chain read.</span>
   </p>
-
   <div class="table-wrap">
     <table class="ltable">
       <thead><tr><th>#</th><th>event</th><th>detail</th><th>state</th></tr></thead>
@@ -578,22 +663,22 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
   </div>
 </section>
 
-<!-- ══════════════════ 09 git log ══════════════════ -->
+<!-- ══════════════════ 11 git log ══════════════════ -->
 <section class="sect wrap reveal" id="commits">
-  <h2 class="sect__h"><span class="sect__num">09</span> git log</h2>
+  <h2 class="sect__h"><span class="sect__num">11</span> git log</h2>
   <p class="sect__lede">no roadmap. only commits. <span class="dim">$ git log --oneline --graph</span></p>
   <ol class="commits" id="commits-list"></ol>
 </section>
 
-<!-- ══════════════════ 10 the tech ══════════════════ -->
+<!-- ══════════════════ 12 the tech ══════════════════ -->
 <section class="sect wrap reveal" id="stack">
-  <h2 class="sect__h"><span class="sect__num">10</span> the tech</h2>
+  <h2 class="sect__h"><span class="sect__num">12</span> the tech</h2>
   <p class="sect__lede">what's actually under the cat.</p>
 
   <div class="stack">
     <div class="stack__col">
       <h3 class="stack__h">chain</h3>
-      <ul><li>solana</li><li>spl-token</li><li>raydium lp</li><li>burned + renounced</li></ul>
+      <ul><li>solana</li><li>spl-token</li><li>pump.fun curve</li><li>burned + renounced</li></ul>
     </div>
     <div class="stack__col">
       <h3 class="stack__h">site</h3>
@@ -601,11 +686,11 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
     </div>
     <div class="stack__col">
       <h3 class="stack__h">data</h3>
-      <ul><li>dexscreener api</li><li>live price + pools</li><li>client-side only</li><li>no backend</li></ul>
+      <ul><li>dexscreener api</li><li>solana json-rpc</li><li>client-side only</li><li>no backend</li></ul>
     </div>
     <div class="stack__col">
       <h3 class="stack__h">render</h3>
-      <ul><li>canvas ascii rain</li><li>seeded sigil forge</li><li>css-only glow</li><li>no images</li></ul>
+      <ul><li>canvas ascii rain</li><li>seeded sigil forge</li><li>canvas share cards</li><li>no images</li></ul>
     </div>
     <div class="stack__col">
       <h3 class="stack__h">ritual</h3>
@@ -614,9 +699,9 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
   </div>
 </section>
 
-<!-- ══════════════════ 11 colony ══════════════════ -->
+<!-- ══════════════════ 13 colony ══════════════════ -->
 <section class="sect wrap reveal" id="colony">
-  <h2 class="sect__h"><span class="sect__num">11</span> the colony</h2>
+  <h2 class="sect__h"><span class="sect__num">13</span> the colony</h2>
   <p class="sect__lede">
     there is no team. there is a colony. it has no leader, no mod application,
     and no patience for people who type "wen".
@@ -624,7 +709,7 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
 
   <div class="grid grid--split">
     <form class="panel panel--bracket form" id="colony-form" novalidate>
-      <div class="panel__bar">~/cate/colony/enlist.sh</div>
+      <div class="panel__bar">/prompt/cate/colony/enlist.sh</div>
       <div class="panel__body">
         <label for="c-handle"><span class="dim">$</span> handle</label>
         <input id="c-handle" name="handle" type="text" autocomplete="nickname" placeholder="what they call you" required>
@@ -642,7 +727,7 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
 
         <label class="check">
           <input type="checkbox" id="c-agree" required>
-          <span>i understand $CATE is a memecoin and can go to zero.</span>
+          <span>i understand CATE is a memecoin and can go to zero.</span>
         </label>
 
         <button class="btn btn--solid" type="submit">[ sign manifest ]</button>
@@ -662,24 +747,22 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
 
       <div class="panel panel--bracket">
         <div class="panel__bar">sect roll</div>
-        <div class="panel__body">
-          <ul class="roll" id="sect-roll"></ul>
-        </div>
+        <div class="panel__body"><ul class="roll" id="sect-roll"></ul></div>
       </div>
 
-      <ul class="links">
-        <li><span class="bul">↗</span> <a href="#" rel="noopener">x / twitter</a></li>
-        <li><span class="bul">↗</span> <a href="#" rel="noopener">telegram</a></li>
-        <li><span class="bul">↗</span> <a href="#" rel="noopener">github</a></li>
-        <li><span class="bul">↗</span> <a href="https://dexscreener.com/solana" rel="noopener" target="_blank">dexscreener</a></li>
-      </ul>
+      <div class="panel panel--bracket">
+        <div class="panel__bar">achievements <span class="dim" id="ach-count"></span></div>
+        <div class="panel__body"><ul class="achs" id="achs"></ul></div>
+      </div>
+
+      <ul class="links" id="socials"></ul>
     </div>
   </div>
 </section>
 
-<!-- ══════════════════ 12 faq ══════════════════ -->
+<!-- ══════════════════ 14 faq ══════════════════ -->
 <section class="sect wrap reveal" id="faq">
-  <h2 class="sect__h"><span class="sect__num">12</span> faq</h2>
+  <h2 class="sect__h"><span class="sect__num">14</span> faq</h2>
   <div class="faq" id="faq-list"></div>
 </section>
 
@@ -687,7 +770,7 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
 <section class="sect wrap reveal" id="disclaimer">
   <div class="warn">
     <p>
-      <b>⚠ read this.</b> $CATE is a memecoin. it has no intrinsic value, no
+      <b>⚠ read this.</b> CATE is a memecoin. it has no intrinsic value, no
       guarantee of return, and no promise of anything at all. it is not an
       investment, a security, or financial advice. the supply is fixed and the
       contract is renounced — that is the extent of what anyone can promise you.
@@ -703,7 +786,7 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
 <footer class="foot">
   <div class="wrap foot__inner">
     <div>
-      <p>⛧ <span id="year">2026</span> $CATE — hand-assembled, no trackers, no cookies, no consent theatre.</p>
+      <p>⛧ <span id="year">2026</span> /prompt/cate — hand-assembled, no trackers, no cookies, no consent theatre.</p>
       <p class="dim">press <kbd>/</kbd> console · <kbd>ctrl</kbd>+<kbd>k</kbd> palette · <kbd>t</kbd> theme · <kbd>g</kbd> dig</p>
     </div>
     <pre class="foot__art" aria-hidden="true">  /\_/\
@@ -722,20 +805,19 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% in the pool
   </div>
 </div>
 
-<!-- ══════════════════ toasts ══════════════════ -->
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
 <!-- ══════════════════ console ══════════════════ -->
 <div class="console" id="console" data-open="false">
   <button class="console__handle" id="console-handle" type="button" aria-expanded="false" aria-controls="console-body">
     <span class="prompt">&gt;_</span> console <span class="dim">/</span>
-    <span class="console__hint dim" id="console-hint">try `price`, `dig`, `lives`, `pools`</span>
+    <span class="console__hint dim" id="console-hint">try `price`, `chain`, `dig`, `raid`</span>
   </button>
   <div class="console__body" id="console-body">
     <pre class="console__out" id="console-out" tabindex="0">type `help` for commands.</pre>
     <form class="console__form" id="console-form">
       <label class="sr" for="console-in">console input</label>
-      <span class="prompt">cate@den</span><span class="dim">:</span><span class="path">~</span><span class="dim">$</span>
+      <span class="prompt">cate@den</span><span class="dim">:</span><span class="path">/prompt</span><span class="dim">$</span>
       <input id="console-in" type="text" autocomplete="off" spellcheck="false" autocapitalize="off">
     </form>
   </div>
