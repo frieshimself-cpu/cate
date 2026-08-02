@@ -356,6 +356,10 @@
     $('#ca-copy')?.addEventListener('click', copyCA);
     $('#brand-ticker').textContent = '$' + CFG.ticker;
 
+    const xUrl = (CFG.socials?.x || '').trim();
+    const xBtn = $('#x-link');
+    if (xBtn && xUrl) { xBtn.href = xUrl; xBtn.hidden = false; }
+
     // every outbound link that depends on the mint
     if (CA_IS_REAL) {
       const set = (sel, href) => { const n = $(sel); if (n) n.href = href; };
@@ -505,6 +509,54 @@
     }
   }
 
+
+  /* ══ launch phase ═════════════════════════════════════
+     a pump.fun coin has no liquidity pool while it trades on the
+     bonding curve — pump.fun creates the pool and burns the LP itself
+     at graduation. so "lp burned" is FALSE at launch and becomes TRUE
+     later, with nobody pressing anything. the site reads which stage
+     it is in rather than claiming the end state up front. */
+  const DEX_POOLS = /raydium|pumpswap|orca|meteora|fluxbeam|lifinity/i;
+
+  function setPhase(phase) {
+    const node = $('#phase');
+    const lp   = $('#tok-lp');
+    const lock = $('#tok-lock');
+    const claim = $('#claim-checks li[data-claim="lp"]');
+
+    if (node) node.dataset.phase = phase;
+
+    if (phase === 'pre') {
+      if (node) node.hidden = true;
+      if (lp)   lp.textContent = 'unknown';
+      if (lock) lock.textContent = '"pending"';
+      if (claim) claim.dataset.ok = '';
+      return;
+    }
+
+    if (phase === 'curve') {
+      if (node) {
+        node.hidden = false;
+        node.innerHTML = '<b>bonding curve</b> no liquidity pool yet — ' +
+          'pump.fun creates it and burns the LP automatically at graduation.';
+      }
+      if (lp)   lp.textContent = 'false';
+      if (lock) lock.textContent = '"on curve"';
+      if (claim) { claim.dataset.ok = 'pending'; claim.textContent = 'lp burned — pending graduation'; }
+      return;
+    }
+
+    // graduated
+    if (node) {
+      node.hidden = false;
+      node.innerHTML = '<b>graduated</b> live on a DEX pool. LP was burned by ' +
+        'pump.fun at graduation.';
+    }
+    if (lp)   lp.textContent = 'true';
+    if (lock) lock.textContent = '"forever"';
+    if (claim) { claim.dataset.ok = 'true'; claim.textContent = 'lp burned'; }
+  }
+
   /* ══ live market data ═════════════════════════════════ */
   let lastStats = null;
   let lastPools = [];
@@ -523,6 +575,7 @@
     if (!$('#metrics')) return;
 
     if (!CA_IS_REAL) {
+      setPhase('pre');
       setIdle('pre-launch — paste the mint into config.js and every live panel wakes up.');
       return;
     }
@@ -538,6 +591,7 @@
         .sort((a, b) => (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0));
       const pair = pools[0];
       if (!pair) {
+        setPhase(IS_PUMP ? 'curve' : 'pre');
         setIdle(
           IS_PUMP
             ? 'contract is live but dexscreener has not indexed a pool yet — normal for a fresh pump.fun mint. trade on the bonding curve until it graduates.'
@@ -602,6 +656,7 @@
       // ── pools table ──
       renderPools(pools);
 
+      setPhase(pools.some((p) => DEX_POOLS.test(p.dexId || '')) ? 'graduated' : 'curve');
       lastStats = { price, change, mcap, liq, vol, buys, sells, dex: pair.dexId, pools: pools.length };
       checkWatch();
     } catch (err) {
@@ -1847,6 +1902,7 @@ ${ca}`],
         '  price             live price / mcap / 24h\n' +
         '  pools             every pool holding CATE\n' +
         '  chain             on-chain mint facts\n' +
+        '  phase             bonding curve or graduated\n' +
         '  raid              copy-paste posts\n' +
         '  card              render a share card\n' +
         '  watch [pct]       toast me on a price move\n' +
@@ -1882,6 +1938,12 @@ ${ca}`],
           `supply       ${c.supply.toLocaleString('en-US')}\n` +
           `decimals     ${c.dec}\n` +
           `rpc          ${CFG.rpc}`);
+      },
+
+      phase: () => {
+        if (!CA_IS_REAL) { write('pre-launch — no contract set.'); return; }
+        const n = $('#phase');
+        write(n && !n.hidden ? n.textContent.trim() : 'phase unknown — market feed has not answered yet.');
       },
 
       raid: () => {

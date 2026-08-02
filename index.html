@@ -152,6 +152,7 @@
           <code class="ca__value" id="ca-value">not launched — paste the mint into config.js</code>
           <button class="ca__copy" id="ca-copy" type="button" aria-label="copy contract address">[ copy ]</button>
         </div>
+        <p class="phase" id="phase" hidden></p>
         <p class="ca__warn" id="ca-warn">
           ⚠ verify before you send. there is exactly one CATE and it is the
           string above.
@@ -160,6 +161,7 @@
         <div class="hero__cta">
           <a class="btn btn--solid" href="#buy">[ buy CATE ]</a>
           <a class="btn" id="chart-link" href="https://dexscreener.com/solana" target="_blank" rel="noopener">[ chart ]</a>
+          <a class="btn btn--x" id="x-link" href="#" target="_blank" rel="noopener" hidden>[ 𝕏 follow ]</a>
           <button class="btn" data-console="price">[ console ]</button>
         </div>
       </div>
@@ -287,8 +289,8 @@ freeze   = <span class="c-str">"revoked"</span>
 update   = <span class="c-str">"revoked"</span>
 
 <span class="c-key">[liquidity]</span>
-burned   = <span class="c-bool">true</span>
-locked   = <span class="c-str">"forever"</span>
+burned   = <span class="c-bool" id="tok-lp">unknown</span>
+locked   = <span class="c-str" id="tok-lock">"pending"</span>
 
 <span class="c-key">[allocation]</span>
 team     = <span class="c-num">0</span>   <span class="c-com"># zero. read it again.</span>
@@ -352,6 +354,7 @@ market   = <span class="c-num">100</span> <span class="c-com"># 100% to the curv
 
       <h3 class="spread__h">safety checks</h3>
       <ul class="checks" id="claim-checks">
+        <li data-claim="lp">lp burned</li>
         <li data-claim="mint">mint revoked</li>
         <li data-claim="freeze">freeze revoked</li>
         <li data-claim="supply">supply fixed</li>

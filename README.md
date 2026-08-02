@@ -51,6 +51,22 @@ red banner marks it as unofficial.
 > your own branding. Verified: with a contract configured, the override is
 > dropped and no banner appears.
 
+### Launch phases — the LP-burn claim handles itself
+
+You never burn anything manually. pump.fun creates the liquidity pool and burns
+the LP tokens itself at graduation. The site reads which stage the coin is in and
+words the claim accordingly, so it is never wrong:
+
+| stage | banner | `cate.config.toml` | safety check |
+| --- | --- | --- | --- |
+| no contract set | hidden | `burned = unknown` | unchecked |
+| **bonding curve** | "no liquidity pool yet — pump.fun creates it and burns the LP automatically at graduation" | `burned = false`, `locked = "on curve"` | `[~] lp burned — pending graduation` |
+| **graduated** | "live on a DEX pool. LP was burned by pump.fun at graduation" | `burned = true`, `locked = "forever"` | `[✓] lp burned` |
+
+Graduation is detected by a real DEX pool (pumpswap / raydium / orca / meteora)
+appearing in the DexScreener feed. `phase` in the console prints the current
+stage.
+
 ### What works on a fresh pump.fun launch
 
 - **Token-2022 mints are handled.** New pump.fun tokens are Token-2022, not

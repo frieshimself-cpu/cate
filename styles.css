@@ -883,6 +883,8 @@ html:not(.js) .console { display: none; }
 .checks li[data-claim][data-ok="true"]::before  { content: "[✓] "; color: var(--accent); }
 .checks li[data-claim][data-ok="false"]::before { content: "[✗] "; color: var(--dead); }
 .checks li[data-claim][data-ok="false"] { color: var(--dead); }
+.checks li[data-claim][data-ok="pending"]::before { content: "[~] "; color: var(--warn); }
+.checks li[data-claim][data-ok="pending"] { color: var(--warn); }
 .checks li[data-claim][data-ok="asserted"]::before { content: "[·] "; color: var(--warn); }
 .checks li[data-claim][data-ok="asserted"] { color: var(--fg-dim); }
 
@@ -955,3 +957,16 @@ html:not(.js) .console { display: none; }
   .verify li { grid-template-columns: 1fr auto; }
   .verify__k { grid-column: 1 / -1; }
 }
+
+/* ══ launch phase (bonding curve → graduated) ═══════════ */
+.phase {
+  font-size: .78rem; display: flex; align-items: center; gap: .5rem;
+  border-left: 2px solid var(--warn); padding-left: .6rem; color: var(--fg-dim);
+}
+.phase[hidden] { display: none; }
+.phase b { color: var(--warn); font-weight: 400; text-transform: uppercase; letter-spacing: .1em; font-size: .7rem; }
+.phase[data-phase="graduated"] { border-left-color: var(--accent); }
+.phase[data-phase="graduated"] b { color: var(--accent); }
+
+.btn--x { border-color: var(--accent-dk); }
+.btn--x[hidden] { display: none; }

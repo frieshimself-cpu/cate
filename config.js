@@ -41,7 +41,7 @@ window.CATE_CONFIG = {
 
   /* socials — leave a field empty to hide that link */
   socials: {
-    x:        '',
+    x:        'https://x.com/promptcate',
     telegram: '',
     github:   '',
   },
