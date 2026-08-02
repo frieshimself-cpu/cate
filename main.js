@@ -517,8 +517,12 @@
      later, with nobody pressing anything. the site reads which stage
      it is in rather than claiming the end state up front. */
   const DEX_POOLS = /raydium|pumpswap|orca|meteora|fluxbeam|lifinity/i;
+  let chainMissing = false;
 
   function setPhase(phase) {
+    // once the chain says the mint isn't there, nothing else gets to
+    // claim the coin is on a curve or graduated
+    if (chainMissing && phase !== 'notfound') phase = 'notfound';
     const node = $('#phase');
     const lp   = $('#tok-lp');
     const lock = $('#tok-lock');
@@ -531,6 +535,18 @@
       if (lp)   lp.textContent = 'unknown';
       if (lock) lock.textContent = '"pending"';
       if (claim) claim.dataset.ok = '';
+      return;
+    }
+
+    if (phase === 'notfound') {
+      if (node) {
+        node.hidden = false;
+        node.innerHTML = '<b>not on chain</b> this address does not exist on mainnet yet — ' +
+          'nothing has been minted at it.';
+      }
+      if (lp)   lp.textContent = 'unknown';
+      if (lock) lock.textContent = '"pending"';
+      if (claim) { claim.dataset.ok = ''; claim.textContent = 'lp burned'; }
       return;
     }
 
@@ -591,12 +607,14 @@
         .sort((a, b) => (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0));
       const pair = pools[0];
       if (!pair) {
-        setPhase(IS_PUMP ? 'curve' : 'pre');
+        setPhase(chainMissing ? 'notfound' : (IS_PUMP ? 'curve' : 'pre'));
         setIdle(
-          IS_PUMP
-            ? 'contract is live but dexscreener has not indexed a pool yet — normal for a fresh pump.fun mint. trade on the bonding curve until it graduates.'
-            : 'contract is live but no pool exists yet.',
-          IS_PUMP ? 'bonding curve' : 'no pool');
+          chainMissing
+            ? 'this address is not on mainnet yet — see section 05.'
+            : IS_PUMP
+              ? 'contract is live but dexscreener has not indexed a pool yet — normal for a fresh pump.fun mint. trade on the bonding curve until it graduates.'
+              : 'contract is live but no pool exists yet.',
+          chainMissing ? 'not on chain' : (IS_PUMP ? 'bonding curve' : 'no pool'));
         return;
       }
       lastPools = pools;
@@ -1353,8 +1371,35 @@
 
     try {
       const info = await rpc('getAccountInfo', [CA, { encoding: 'jsonParsed' }]);
+
+      // value === null means the account simply is not on this cluster.
+      // that is a different fact from "the RPC is down" and deserves its
+      // own message — otherwise a not-yet-created mint reads as an outage.
+      if (info && info.value === null) {
+        chainMissing = true;
+        setPhase('notfound');
+        ['mint', 'freeze', 'supply', 'decimals', 'program'].forEach((k) => setCheck(k, 'no account', false));
+        note.innerHTML =
+          'this address does not exist on mainnet. either the mint has not been ' +
+          'created yet, or it is wrong. ' +
+          `<a href="${SOLSCAN}${CA}" target="_blank" rel="noopener">check on solscan</a>.`;
+        if (badge) { badge.textContent = 'not found'; badge.dataset.on = 'false'; }
+        $('#holders').textContent = '';
+        $('#holders').appendChild(el('li', 'holders__empty dim', 'no mint, no holders.'));
+        // the market feed resolves first and would otherwise be left claiming
+        // "bonding curve" for an address that isn't on chain at all
+        setIdle('this address is not on mainnet yet — nothing has been minted at it.', 'not on chain');
+        return;
+      }
+
       const parsed = info?.value?.data?.parsed?.info;
       if (!parsed) throw new Error('not a token mint account');
+
+      // the mint just appeared — clear the block and re-read the market so
+      // the phase banner and status don't stay stuck on "not on chain"
+      const wasMissing = chainMissing;
+      chainMissing = false;
+      if (wasMissing) pullStats();
 
       const owner = info.value.owner;
       const dec = parsed.decimals;
@@ -1425,6 +1470,19 @@
       verifyChain();
     });
     verifyChain();
+
+    // a pre-launch mint will appear on chain at some point. poll gently so
+    // an already-open tab flips to live by itself instead of needing F5.
+    if (!CA_IS_REAL) return;
+    const poll = setInterval(async () => {
+      if (!chainMissing) { clearInterval(poll); return; }
+      await verifyChain();
+      if (!chainMissing) {
+        clearInterval(poll);
+        toast('⛧ the mint is live ⛧');
+        pullStats();
+      }
+    }, 60000);
   }
 
   /* ══ raid kit ═════════════════════════════════════════ */

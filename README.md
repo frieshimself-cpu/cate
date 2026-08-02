@@ -60,12 +60,20 @@ words the claim accordingly, so it is never wrong:
 | stage | banner | `cate.config.toml` | safety check |
 | --- | --- | --- | --- |
 | no contract set | hidden | `burned = unknown` | unchecked |
+| **address set but not minted yet** | "not on chain — this address does not exist on mainnet yet" | `burned = unknown` | unchecked |
 | **bonding curve** | "no liquidity pool yet — pump.fun creates it and burns the LP automatically at graduation" | `burned = false`, `locked = "on curve"` | `[~] lp burned — pending graduation` |
 | **graduated** | "live on a DEX pool. LP was burned by pump.fun at graduation" | `burned = true`, `locked = "forever"` | `[✓] lp burned` |
 
 Graduation is detected by a real DEX pool (pumpswap / raydium / orca / meteora)
 appearing in the DexScreener feed. `phase` in the console prints the current
 stage.
+
+**Deploying the site before the mint exists is supported.** A configured address
+that isn't on chain yet is reported as exactly that — "this address does not
+exist on mainnet yet" — rather than as an RPC outage, and the on-chain checks
+read `no account`. The page then re-checks once a minute, so an already-open tab
+flips itself to live the moment you create the coin (with an `⛧ the mint is
+live ⛧` toast) without anyone needing to refresh.
 
 ### What works on a fresh pump.fun launch
 
