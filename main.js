@@ -340,7 +340,7 @@
         box.appendChild(tag);
       }
     } else {
-      val.textContent = 'not launched — paste the mint into config.js';
+      val.textContent = 'Soon';
       box.dataset.state = 'pre';
       $('#ca-copy').hidden = true;
       $('#ca-warn').textContent =
