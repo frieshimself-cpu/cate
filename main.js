@@ -31,7 +31,10 @@
     supply: 1000000000, socials: {},
   }, window.CATE_CONFIG || {});
 
-  const isMint = (s) => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s || '');
+  // a solana mint is base58; an EVM contract is 0x + 40 hex chars.
+  const isSol  = (s) => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s || '');
+  const isEvm  = (s) => /^0x[0-9a-fA-F]{40}$/.test(s || '');
+  const isMint = (s) => isSol(s) || isEvm(s);
 
   let CA = (CFG.contract || '').trim();
   let PREVIEW = false;
@@ -41,13 +44,20 @@
     else CA = '';
   }
   const CA_IS_REAL = isMint(CA);
-  const IS_PUMP = /pump$/i.test(CA);
+  const IS_EVM  = isEvm(CA);
+  const IS_PUMP = !IS_EVM && /pump$/i.test(CA);
 
   const DEX_API   = 'https://api.dexscreener.com/latest/dex/tokens/';
   const DEX_PAGE  = 'https://dexscreener.com/solana/';
   const PUMP_PAGE = 'https://pump.fun/coin/';
   const SOLSCAN   = 'https://solscan.io/token/';
   const RUGCHECK  = 'https://rugcheck.xyz/tokens/';
+  // EVM: the chain is not known until dexscreener indexes a pool, so
+  // links go through chain-neutral pages until then.
+  const DEX_SEARCH = 'https://dexscreener.com/search?q=';
+  const BLOCKSCAN  = 'https://blockscan.com/address/';
+  const chartUrl    = () => IS_EVM ? DEX_SEARCH + CA : DEX_PAGE + CA;
+  const explorerUrl = () => IS_EVM ? BLOCKSCAN + CA : SOLSCAN + CA;
 
   /* ══ toasts ═══════════════════════════════════════════ */
   function toast(msg, kind = 'ok') {
@@ -335,8 +345,8 @@
     if (CA_IS_REAL) {
       val.textContent = CA;
       box.dataset.state = 'live';
-      if (IS_PUMP) {
-        const tag = el('span', 'ca__chain', 'pump.fun');
+      if (IS_PUMP || IS_EVM) {
+        const tag = el('span', 'ca__chain', IS_PUMP ? 'pump.fun' : 'evm');
         box.appendChild(tag);
       }
     } else {
@@ -363,14 +373,26 @@
     // every outbound link that depends on the mint
     if (CA_IS_REAL) {
       const set = (sel, href) => { const n = $(sel); if (n) n.href = href; };
-      set('#chart-link', DEX_PAGE + CA);
-      set('#buy-link',   PUMP_PAGE + CA);
-      set('#pump-link',  PUMP_PAGE + CA);
-      set('#solscan-link', SOLSCAN + CA);
-      $$('a[href="https://dexscreener.com/solana"]').forEach((a) => { a.href = DEX_PAGE + CA; });
-      $$('a[href="https://pump.fun"]').forEach((a) => { a.href = PUMP_PAGE + CA; });
-      $$('a[href="https://rugcheck.xyz"]').forEach((a) => { a.href = RUGCHECK + CA; });
-      $$('a[href="https://solscan.io"]').forEach((a) => { a.href = SOLSCAN + CA; });
+      set('#chart-link', chartUrl());
+      set('#solscan-link', explorerUrl());
+      $$('a[href="https://dexscreener.com/solana"]').forEach((a) => { a.href = chartUrl(); });
+      $$('a[href="https://solscan.io"]').forEach((a) => { a.href = explorerUrl(); });
+      if (IS_EVM) {
+        // pump.fun / jupiter / rugcheck are solana-only — route them to
+        // the chart search and the EVM explorer instead of dead pages.
+        $$('a[href="https://pump.fun"]').forEach((a) => { a.href = chartUrl(); a.textContent = a.textContent.replace('pump.fun', 'dexscreener'); });
+        $$('a[href="https://jup.ag"]').forEach((a) => { a.href = chartUrl(); a.textContent = a.textContent.replace('jupiter', 'dexscreener'); });
+        const pump = $('#pump-link'); if (pump) pump.textContent = '[ trade ]';
+        $$('#buy-links a[href="' + chartUrl() + '"]').slice(2).forEach((a) => { a.hidden = true; });
+        $$('a[href="https://rugcheck.xyz"]').forEach((a) => { a.href = explorerUrl(); a.textContent = a.textContent.replace('rugcheck', 'explorer'); });
+        $$('#buy-links a[href="https://rugcheck.xyz"], #buy-links a[href="' + explorerUrl() + '"]:not(#solscan-link)').forEach((a) => { a.hidden = true; });
+        const sol = $('#solscan-link'); if (sol) sol.textContent = '[ blockscan ]';
+      } else {
+        set('#buy-link',   PUMP_PAGE + CA);
+        set('#pump-link',  PUMP_PAGE + CA);
+        $$('a[href="https://pump.fun"]').forEach((a) => { a.href = PUMP_PAGE + CA; });
+        $$('a[href="https://rugcheck.xyz"]').forEach((a) => { a.href = RUGCHECK + CA; });
+      }
     }
 
     // socials from config — hide the ones left empty
@@ -378,8 +400,8 @@
     if (box2) {
       const rows = [['x / twitter', CFG.socials?.x], ['telegram', CFG.socials?.telegram],
                     ['github', CFG.socials?.github],
-                    ['dexscreener', CA_IS_REAL ? DEX_PAGE + CA : ''],
-                    ['solscan', CA_IS_REAL ? SOLSCAN + CA : '']];
+                    ['dexscreener', CA_IS_REAL ? chartUrl() : ''],
+                    [IS_EVM ? 'blockscan' : 'solscan', CA_IS_REAL ? explorerUrl() : '']];
       rows.forEach(([label, href]) => {
         if (!href) return;
         const li = el('li');
@@ -618,6 +640,12 @@
         return;
       }
       lastPools = pools;
+
+      // dexscreener tells us the chain + pair page — swap the search
+      // links for the real chart once we know it.
+      if (IS_EVM && pair.url) {
+        $$('a[href="' + DEX_SEARCH + CA + '"]').forEach((a) => { a.href = pair.url; });
+      }
 
       const price  = parseFloat(pair.priceUsd);
       const change = parseFloat(pair.priceChange?.h24);
@@ -1369,6 +1397,19 @@
 
     if (!CA_IS_REAL) {
       note.textContent = 'waiting for a contract address — nothing to verify yet.';
+      return;
+    }
+
+    if (IS_EVM) {
+      // the verifier speaks solana JSON-RPC; an EVM contract is verified
+      // on its explorer instead of pretending these checks ran.
+      ['mint', 'freeze', 'supply', 'decimals', 'program'].forEach((k) => setCheck(k, 'n/a (evm)', null));
+      note.innerHTML =
+        'this is an EVM contract — the on-chain checks here are solana-only. ' +
+        `<a href="${BLOCKSCAN}${CA}" target="_blank" rel="noopener">verify on blockscan</a>.`;
+      if (badge) { badge.textContent = 'evm'; badge.dataset.on = 'true'; }
+      const h = $('#holders');
+      if (h) { h.textContent = ''; h.appendChild(el('li', 'holders__empty dim', 'holders: see the explorer.')); }
       return;
     }
 

@@ -25,7 +25,7 @@ window.CATE_CONFIG = {
      a pump.fun mint is base58 and usually ends in "pump", e.g.
        '6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN'
      leave it empty ('') until you have one.                */
-  contract: '',
+  contract: '0x9551eaa885511f9fe8e04a50fae4eac64876269f',
 
   /* solana JSON-RPC used by the on-chain verifier (05).
      the free public endpoint is rate-limited — for anything
